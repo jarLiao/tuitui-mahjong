@@ -15,12 +15,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@700;900&display=swap">
 <style>
-/* 布局：一屏牌桌。顶栏放关卡与进度，中央是绒布牌盘，底部三件道具；牌是象牙面、翡翠背的实物，两种主题下都不变色 */
+/* 布局：一屏牌桌。顶栏放关卡、用时、得分与连消条，中央是绒布牌盘，底部三件道具；牌是象牙面、翡翠背的实物，两种主题下都不变色 */
 :root{
   --felt:#3a8767; --felt-deep:#1d5641; --tray:#235f48; --rim:rgba(255,255,255,.14);
   --panel:rgba(10,38,28,.38); --text:#f6f1e3; --text-dim:rgba(246,241,227,.72);
   --ivory:#fbf6e8; --ivory-shade:#e8dcc0; --jade:#2f9a70; --jade-deep:#1a6145;
-  --stone:#8d8a83; --stone-hi:#b5b1a8; --stone-deep:#5c5952;
+  --stone:#9a968d; --stone-hi:#c9c5bb; --stone-deep:#5f5b54; --crack:#4d4a44;
   --cinnabar:#d23d2f; --cinnabar-deep:#9b2a20; --gold:#f2c45a; --gold-hi:#ffe7a3;
   --ink:#1d2330; --card:#fbf6e8; --card-fg:#1d2330; --card-dim:#5f6470;
   --scrim:rgba(6,24,18,.62); --shadow:rgba(0,0,0,.32); --slot:rgba(0,0,0,.13);
@@ -73,18 +73,27 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 }
 .iconbtn svg{width:20px;height:20px}
 .lvl{font-family:var(--font-title);font-size:28px;line-height:1;letter-spacing:.04em;white-space:nowrap}
-.score{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;line-height:1.1}
+.clock{
+  margin-left:auto;display:flex;align-items:center;gap:5px;height:32px;padding:0 10px;border-radius:10px;
+  background:var(--panel);box-shadow:inset 0 0 0 1px var(--rim);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;position:relative;
+}
+.clock svg{width:15px;height:15px;opacity:.8}
+.score{text-align:right;font-variant-numeric:tabular-nums;line-height:1.1;min-width:54px}
 .score b{display:block;font-size:20px}
 .score small{font-size:11px;color:var(--text-dim);letter-spacing:.12em}
+.cbar{display:block;height:3px;border-radius:2px;margin-top:3px;background:var(--panel);overflow:hidden}
+.cbar i{display:block;height:100%;width:0;background:var(--gold);border-radius:2px}
 .progress{height:6px;border-radius:3px;background:var(--panel);margin-top:10px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--rim)}
 .progress i{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--gold-hi));transition:width .35s ease}
 
-#stage{flex:1;min-height:0;position:relative;display:grid;place-items:center}
+#stage{flex:1;min-height:0;position:relative;display:grid;place-items:center;padding-bottom:44px}
 #board{
   position:relative;border-radius:18px;touch-action:none;
   background:var(--tray);
   box-shadow:inset 0 3px 14px var(--shadow),inset 0 0 0 1px var(--rim),0 1px 0 var(--rim);
 }
+#board.flash{animation:flash .45s ease-out}
+@keyframes flash{from{box-shadow:inset 0 3px 14px var(--shadow),inset 0 0 0 1px var(--rim),0 0 0 4px var(--gold),0 0 36px var(--gold)}}
 .slot{position:absolute;left:0;top:0;border-radius:7px;background:var(--slot)}
 .tile{
   position:absolute;left:0;top:0;width:var(--tw);height:var(--th);
@@ -98,7 +107,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   transition:transform .17s cubic-bezier(.2,.8,.25,1),translate .15s ease,filter .15s;
   will-change:transform;cursor:grab;
 }
-.tile svg{width:100%;height:100%;display:block;pointer-events:none}
+.tile svg{width:100%;height:100%;display:block;pointer-events:none;position:relative}
 .tile text{font-family:var(--font-tile);font-weight:900}
 .tile.dragging{transition:translate .15s ease;cursor:grabbing}
 .tile.lift{translate:0 -3px;filter:brightness(1.04)}
@@ -109,11 +118,19 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .tile.cand::after,.tile.hint::after{animation:pulse .8s ease-in-out infinite alternate}
 .tile.hint::after{border-color:var(--gold-hi)}
 @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.07);box-shadow:0 0 22px var(--gold)}}
-.tile.stone{
+/* 石化牌：牌面仍可辨认，外面裹一层带裂纹的石头 */
+.tile.frozen{
   cursor:default;
-  background:radial-gradient(120% 90% at 30% 25%,var(--stone-hi),var(--stone) 60%);
-  box-shadow:0 var(--dp) 0 var(--stone-deep),0 calc(var(--dp) + 5px) 9px var(--shadow);
+  background:radial-gradient(130% 100% at 28% 18%,var(--stone-hi),var(--stone) 62%,var(--stone-deep));
+  box-shadow:0 var(--dp) 0 var(--stone-deep),0 calc(var(--dp) + 1px) 0 var(--crack),0 calc(var(--dp) + 5px) 9px var(--shadow);
 }
+.tile.frozen svg{opacity:.78;filter:saturate(.55) contrast(1.05)}
+.tile.frozen::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 80'%3E%3Cpath d='M4 22l11 6 3 10-6 9M18 38l12-3 9 7M56 14l-9 9 2 9M47 23l-10-1M54 60l-11 3-5 11M43 63l-8-6' fill='none' stroke='%234d4a44' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' opacity='.7'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+}
+.tile.glint{animation:glint .7s ease-out}
+@keyframes glint{0%{filter:brightness(1)}35%{filter:brightness(1.35) drop-shadow(0 0 8px var(--gold-hi))}100%{filter:brightness(1)}}
 .board-instant .tile{transition:none!important}
 
 .tools{display:flex;justify-content:center;gap:26px;padding-top:12px}
@@ -127,28 +144,30 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .tool:active .cap{translate:0 3px}
 .tool .cap svg{width:26px;height:26px}
 .tool .badge{
-  position:absolute;right:-7px;top:-7px;min-width:22px;height:22px;border-radius:11px;padding:0 5px;box-sizing:border-box;
-  display:grid;place-items:center;font-size:12px;font-weight:800;letter-spacing:0;font-variant-numeric:tabular-nums;
+  position:absolute;right:-8px;top:-7px;min-width:22px;height:22px;border-radius:11px;padding:0 5px;box-sizing:border-box;
+  display:grid;place-items:center;font-size:12px;font-weight:800;letter-spacing:0;font-variant-numeric:tabular-nums;white-space:nowrap;
   background:var(--cinnabar);color:var(--ivory);box-shadow:0 0 0 2px var(--felt-deep);
 }
-.tool[disabled]{opacity:.45}
+.tool .badge.cost{background:var(--ink);color:var(--gold-hi);font-size:10px}
 
 .tip{
-  position:absolute;left:50%;bottom:6px;translate:-50% 0;max-width:min(92%,420px);
-  padding:8px 14px;border-radius:999px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--rim);
-  font-size:13px;line-height:1.4;text-align:center;color:var(--text);backdrop-filter:blur(4px);
-  transition:opacity .3s;
+  position:absolute;left:50%;bottom:6px;translate:-50% 0;width:max-content;max-width:min(92%,400px);box-sizing:border-box;
+  padding:8px 14px;border-radius:14px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--rim);
+  font-size:13px;line-height:1.45;text-align:center;color:var(--text);backdrop-filter:blur(4px);
+  transition:opacity .3s;pointer-events:none;
 }
 .tip.fade{opacity:0}
 .combo{
-  position:absolute;left:50%;top:2px;translate:-50% 0;pointer-events:none;
+  position:absolute;left:50%;top:0;translate:-50% 0;pointer-events:none;z-index:450;
   font-family:var(--font-title);font-size:34px;color:var(--gold);white-space:nowrap;
   text-shadow:0 2px 0 var(--cinnabar-deep),0 4px 14px var(--shadow);opacity:0;
 }
+.combo.big{font-size:46px}
 .float{
   position:absolute;pointer-events:none;font-weight:800;font-size:18px;color:var(--gold-hi);
-  text-shadow:0 2px 6px var(--shadow);translate:-50% -50%;z-index:400;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 6px var(--shadow);translate:-50% -50%;z-index:400;font-variant-numeric:tabular-nums;white-space:nowrap;
 }
+.float.penalty{color:var(--cinnabar);text-shadow:0 1px 0 var(--ivory),0 2px 6px var(--shadow);font-size:15px}
 .hand{position:absolute;left:0;top:0;width:38px;height:46px;pointer-events:none;z-index:500;opacity:0;filter:drop-shadow(0 4px 6px var(--shadow))}
 .toast{
   position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);translate:-50% 0;z-index:80;
@@ -171,6 +190,11 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 }
 .card h2{margin:0;font-family:var(--font-title);font-weight:400;font-size:40px;line-height:1.1;text-wrap:balance}
 .card p{margin:0;color:var(--card-dim);font-size:14px;line-height:1.6;text-wrap:pretty}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.stats div{display:flex;flex-direction:column;gap:2px;padding:8px 4px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--card-dim)}
+.stats b{font-size:18px;font-variant-numeric:tabular-nums}
+.stats small{font-size:11px;color:var(--card-dim);letter-spacing:.1em}
+.record{color:var(--cinnabar);font-weight:800;font-size:13px;letter-spacing:.1em;min-height:18px}
 .btn{
   min-width:180px;height:52px;border-radius:16px;padding:0 22px;font-size:18px;font-weight:800;letter-spacing:.12em;
   background:linear-gradient(180deg,var(--cinnabar),var(--cinnabar-deep));color:var(--ivory);
@@ -202,12 +226,13 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .lv small{font-size:10px;letter-spacing:1px;color:var(--gold);text-shadow:0 1px 0 var(--cinnabar-deep);min-height:12px}
 .lv[disabled]{background:var(--panel);color:var(--text-dim);box-shadow:inset 0 0 0 1px var(--rim)}
 .lv.cur{outline:3px solid var(--gold);outline-offset:2px}
-.homebar{display:flex;gap:10px}
+.homebar{display:flex;gap:10px;align-items:center}
 .homebar .iconbtn{width:auto;padding:0 14px;gap:8px;display:flex;align-items:center;font-size:14px}
+.ver{font-size:11px;color:var(--text-dim);letter-spacing:.1em}
 
 @media (prefers-reduced-motion: reduce){
   .tile,.tile.slow{transition-duration:.01s}
-  .tile.cand::after,.tile.hint::after{animation:none}
+  .tile.cand::after,.tile.hint::after,.tile.glint,#board.flash{animation:none}
 }
 </style>
 
@@ -217,7 +242,8 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
     </button>
     <div class="lvl" id="lvl">第 1 关</div>
-    <div class="score"><b id="score">0</b><small>得分</small></div>
+    <div class="clock" id="clock" aria-label="用时"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5"/></svg><span id="time">00:00</span></div>
+    <div class="score"><b id="score">0</b><span class="cbar"><i id="cbar"></i></span></div>
     <button class="iconbtn" id="btnSound" aria-label="声音开关"></button>
   </div>
   <div class="progress" aria-hidden="true"><i id="prog"></i></div>
@@ -247,6 +273,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
       <button class="iconbtn" id="btnSound2"></button>
       <button class="iconbtn" id="btnReset">重置进度</button>
     </div>
+    <span class="ver">v2.0</span>
   </div>
 </div>
 
@@ -254,6 +281,12 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   <div class="card">
     <div class="stars" id="stars"><span>★</span><span>★</span><span>★</span></div>
     <h2 id="winTitle">过关</h2>
+    <div class="record" id="winRecord"></div>
+    <div class="stats">
+      <div><b id="wTime">00:00</b><small>用时</small></div>
+      <div><b id="wScore">0</b><small>得分</small></div>
+      <div><b id="wCombo">0</b><small>最高连消</small></div>
+    </div>
     <p id="winText"></p>
     <button class="btn" id="btnNext">下一关</button>
     <div class="row"><button class="btn ghost" id="btnReplay">再玩一次</button><button class="btn ghost" id="btnWinHome">首页</button></div>
@@ -262,8 +295,8 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 
 <div class="overlay" id="stuck" hidden>
   <div class="card">
-    <h2>无路可走</h2>
-    <p id="stuckText">盘面上已经没有能消的牌了。</p>
+    <h2>没有能走的牌了</h2>
+    <p>洗一下牌，保证能接着消完。</p>
     <div class="row">
       <button class="btn" id="sShuffle">洗牌</button>
       <button class="btn ghost" id="sUndo">撤销一步</button>
@@ -275,7 +308,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 <div class="overlay" id="confirm" hidden>
   <div class="card">
     <h2>重置进度？</h2>
-    <p>已解锁的关卡和星星都会清空。</p>
+    <p>已解锁的关卡、星星和最佳用时都会清空。</p>
     <div class="row"><button class="btn" id="cYes">清空</button><button class="btn ghost" id="cNo">取消</button></div>
   </div>
 </div>
@@ -283,28 +316,28 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 <script>
 /*ENGINE-START*/
 // ===== 规则引擎：与界面无关，可在 Node 里单独测试 =====
-const EMPTY=-1, STONE=-2;
+const EMPTY=-1;
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1]]; // 0右 1左 2下 3上；d^1 为反方向
 function rngOf(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
-function mk(W,H){return{W,H,c:new Int8Array(W*H).fill(EMPTY)};}
-function cp(b){return{W:b.W,H:b.H,c:b.c.slice()};}
+// c：牌面（-1 为空）；fz：石化标记，石化牌不能拖动、也推不动，但可以被配对
+function mk(W,H){return{W,H,c:new Int8Array(W*H).fill(EMPTY),fz:new Uint8Array(W*H)};}
+function cp(b){return{W:b.W,H:b.H,c:b.c.slice(),fz:b.fz.slice()};}
 function nxt(b,i,d){const x=i%b.W+DIRS[d][0],y=(i/b.W|0)+DIRS[d][1];return(x<0||y<0||x>=b.W||y>=b.H)?-1:y*b.W+x;}
 function stepOf(b,d){return DIRS[d][0]+DIRS[d][1]*b.W;}
 function tilesLeft(b){let n=0;for(const v of b.c)if(v>=0)n++;return n;}
 // 四个方向上第一张遇到的牌，若牌面相同即为可配对
 function partners(b,i){const f=b.c[i],out=[];for(let d=0;d<4;d++){let j=nxt(b,i,d);while(j>=0&&b.c[j]===EMPTY)j=nxt(b,j,d);if(j>=0&&b.c[j]===f)out.push(j);}return out;}
-// 沿 d 方向紧挨着的一串牌（被推动的链）与链前的空格数
-function chainOf(b,i,d){const chain=[];let j=nxt(b,i,d);while(j>=0&&b.c[j]>=0){chain.push(j);j=nxt(b,j,d);}let free=0;while(j>=0&&b.c[j]===EMPTY){free++;j=nxt(b,j,d);}return{chain,free};}
+// 沿 d 方向紧挨着的一串牌（会被一起推走）与链前的空格数；链里有石化牌就推不动
+function chainOf(b,i,d){const chain=[];let j=nxt(b,i,d);while(j>=0&&b.c[j]>=0){if(b.fz[j])return{chain,free:0,blocked:true};chain.push(j);j=nxt(b,j,d);}let free=0;while(j>=0&&b.c[j]===EMPTY){free++;j=nxt(b,j,d);}return{chain,free,blocked:false};}
 // cells 按移动方向从前到后排列，整体平移 s 个下标
 function moveCells(arr,cells,s){for(const i of cells){arr[i+s]=arr[i];arr[i]=-1;}return cells.map(i=>i+s);}
 function pushCells(b,i,d){const{chain}=chainOf(b,i,d);const cells=chain.slice().reverse();cells.push(i);return cells;}
+function tapMoves(b){const ms=[],c=b.c;for(let i=0;i<c.length;i++){if(c[i]<0)continue;for(const d of [0,2]){let j=nxt(b,i,d);while(j>=0&&c[j]===EMPTY)j=nxt(b,j,d);if(j>=0&&c[j]===c[i])ms.push({t:0,a:i,b:j});}}return ms;}
 // 全部合法步：t=0 直接点消；t=1 拖动第 a 张牌沿 d 推 k 格后与 b 配对（b 为推完后的位置）
 function listMoves(b,firstOnly){
-  const ms=[],c=b.c;
-  for(let i=0;i<c.length;i++){if(c[i]<0)continue;
-    for(const d of [0,2]){let j=nxt(b,i,d);while(j>=0&&c[j]===EMPTY)j=nxt(b,j,d);
-      if(j>=0&&c[j]===c[i]){ms.push({t:0,a:i,b:j});if(firstOnly)return ms;}}}
-  for(let i=0;i<c.length;i++){if(c[i]<0)continue;
+  const ms=tapMoves(b);if(firstOnly&&ms.length)return ms.slice(0,1);
+  const c=b.c;
+  for(let i=0;i<c.length;i++){if(c[i]<0||b.fz[i])continue;
     for(let d=0;d<4;d++){const{free}=chainOf(b,i,d);if(!free)continue;
       const s=cp(b);let cells=pushCells(s,i,d);const st=stepOf(b,d);
       for(let k=1;k<=free;k++){cells=moveCells(s.c,cells,st);const pos=cells[cells.length-1];
@@ -312,13 +345,13 @@ function listMoves(b,firstOnly){
   return ms;
 }
 function applyMove(b,m){
-  const n=cp(b);
-  if(m.t===0){n.c[m.a]=EMPTY;n.c[m.b]=EMPTY;return n;}
-  const np=moveCells(n.c,pushCells(n,m.a,m.d),stepOf(n,m.d)*m.k);
-  n.c[np[np.length-1]]=EMPTY;n.c[m.b]=EMPTY;return n;
+  const n=cp(b);let a=m.a;
+  if(m.t===1){const np=moveCells(n.c,pushCells(n,m.a,m.d),stepOf(n,m.d)*m.k);a=np[np.length-1];}
+  n.c[a]=EMPTY;n.c[m.b]=EMPTY;n.fz[a]=0;n.fz[m.b]=0;return n;
 }
 // 深度优先求解，带去重与节点上限；capped=false 且 ok=false 表示确实无解
-function solveOnce(b,maxNodes,rng){
+// preferSlide 用于洗牌规划：优先用推牌配对，洗出来的盘面不会一眼全是现成对子
+function solveOnce(b,maxNodes,rng,preferSlide){
   const seen=new Set();let nodes=0;const path=[];
   const key=c=>{let s='';for(let i=0;i<c.length;i++)s+=String.fromCharCode(c[i]+70);return s;};
   function rec(s,left){
@@ -326,7 +359,7 @@ function solveOnce(b,maxNodes,rng){
     if(++nodes>maxNodes)return false;
     const ms=listMoves(s,false);if(!ms.length)return false;
     const cnt=new Int16Array(40);for(const v of s.c)if(v>=0)cnt[v]++;
-    for(const m of ms)m.sc=m.t*4+(cnt[s.c[m.a]]>2?2:0)+(m.t?m.k*.01:0)+(rng?rng()*3:0);
+    for(const m of ms)m.sc=preferSlide?(1-m.t)*4+(rng?rng()*3:0):m.t*4+(cnt[s.c[m.a]]>2?2:0)+(m.t?m.k*.01:0)+(rng?rng()*3:0);
     ms.sort((x,y)=>x.sc-y.sc);
     for(const m of ms){
       const n=applyMove(s,m);const k=key(n.c);if(seen.has(k))continue;seen.add(k);
@@ -349,76 +382,206 @@ function solve(b,maxNodes,tries=4){
   }
   return{ok:false,path:null,nodes:total,capped};
 }
+// ===== 洗牌：先不看牌面，只按位置找一条能把牌两两消完的路线，再把现有牌面成对分配上去，所以洗完必有解 =====
+function planShuffle(b,rng){
+  for(let attempt=0;attempt<3;attempt++){
+    const g=cp(b);if(attempt===2)g.fz.fill(0); // 实在排不出路线时解除石化
+    const lab=new Int16Array(g.c.length).fill(-1);
+    for(let i=0;i<g.c.length;i++)if(g.c[i]>=0){g.c[i]=0;lab[i]=i;}
+    const r=solveOnce(g,5000,rng,attempt===0);if(!r.ok)continue;
+    let s=g;const pairs=[];
+    for(const m of r.path){
+      let a=m.a;
+      if(m.t===1){const st=stepOf(s,m.d)*m.k;moveCells(lab,pushCells(s,m.a,m.d),st);a=m.a+st;}
+      pairs.push([lab[a],lab[m.b]]);lab[a]=-1;lab[m.b]=-1;s=applyMove(s,m);
+    }
+    const faces=[];for(const v of b.c)if(v>=0)faces.push(v);faces.sort((x,y)=>x-y);
+    const fp=[];for(let i=0;i<faces.length;i+=2)fp.push(faces[i]);
+    // 牌面换着分给各对都不影响有解，多试几种，挑开局约 3 对现成对子的，既能接着消又不送分
+    let best=null,bd=1e9;
+    for(let t=0;t<40&&bd>0;t++){
+      for(let i=fp.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[fp[i],fp[j]]=[fp[j],fp[i]];}
+      const out=cp(b);if(attempt===2)out.fz.fill(0);
+      pairs.forEach(([x,y],n)=>{out.c[x]=fp[n];out.c[y]=fp[n];});
+      const dd=Math.abs(tapMoves(out).length-3);if(dd<bd){bd=dd;best=out;}
+    }
+    return{b:best,thawed:attempt===2};
+  }
+  return null;
+}
 // ===== 关卡：从空盘倒着放牌，每一步都是某个合法正向步的逆操作，所以必有解 =====
+// 难度目标：open 开局能直接点消的对数；push 模拟玩家一路上找不到现成对子、必须自己推的步数占比。
+// tail：开局最先要走的几步强制是推牌。离线按目标挑种子，节奏是「紧—松—中」循环
 function levelParams(L){
-  const fixed=[null,
-    {cols:4,rows:5,faces:3,density:.7,slide:0,stones:0},
-    {cols:5,rows:5,faces:4,density:.72,slide:.9,stones:0},
-    {cols:5,rows:6,faces:6,density:.78,slide:.6,stones:0},
-    {cols:6,rows:7,faces:8,density:.8,slide:.55,stones:0},
-    {cols:6,rows:8,faces:10,density:.82,slide:.55,stones:2},
-    {cols:7,rows:8,faces:12,density:.84,slide:.55,stones:2},
-    {cols:7,rows:9,faces:13,density:.85,slide:.55,stones:3},
-    {cols:8,rows:9,faces:15,density:.86,slide:.55,stones:3},
-    {cols:8,rows:10,faces:16,density:.87,slide:.55,stones:3}];
-  if(L<fixed.length)return fixed[L];
-  const r=rngOf(L*977+5);
-  return{cols:9,rows:L%3===0?9:10,faces:Math.min(24,16+((L-9)>>1)),density:Math.min(.92,.87+(L-9)*.004),slide:.5+r()*.15,stones:2+Math.floor(r()*4)};
+  const T={
+    1:{cols:5,rows:5,pairs:6,fr:1,slide:0,frozen:0,script:['tap','push','chain','tap','tap','tap']},
+    2:{cols:6,rows:6,density:.67,fr:.85,slide:.75,frozen:0,tail:1,group:.7,open:[1,2],push:[.45,.65],bursts:2},
+    3:{cols:6,rows:8,density:.78,fr:.6,slide:.7,frozen:0,tail:2,group:.6,open:[0,2],push:[.6,.8],bursts:2},
+    4:{cols:7,rows:8,density:.8,fr:.65,slide:.6,frozen:2,tail:1,group:.7,open:[1,3],push:[.45,.62],bursts:3},
+    5:{cols:7,rows:9,density:.84,fr:.58,slide:.65,frozen:3,tail:2,group:.6,open:[0,2],push:[.6,.8],bursts:3},
+    6:{cols:8,rows:9,density:.85,fr:.62,slide:.6,frozen:3,tail:1,group:.7,open:[1,3],push:[.45,.62],bursts:4},
+    7:{cols:8,rows:10,density:.87,fr:.55,slide:.65,frozen:4,tail:2,group:.6,open:[0,3],push:[.62,.85],bursts:4}};
+  if(T[L])return T[L];
+  const r=rngOf(L*977+5),k=L%3;
+  return{cols:9,rows:L%4===0?9:10,density:Math.min(.9,.87+(L-8)*.002),fr:.52+r()*.12,slide:.6+r()*.1,frozen:3+Math.floor(r()*4),
+    tail:k===0?3:k===1?1:2,group:k===1?.75:.6,open:k===0?[0,3]:k===1?[2,4]:[1,4],push:k===0?[.65,.85]:k===1?[.45,.6]:[.55,.72],bursts:k===1?5:4};
 }
 const EASY_FACES=[31,32,27,18,33,13,29,4];
-function pickFaces(L,n,rng){
+function faceList(L,pairs,fr,rng){
   const all=[];for(let f=0;f<34;f++)all.push(f);
   for(let i=all.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[all[i],all[j]]=[all[j],all[i]];}
-  if(L<=3){const easy=EASY_FACES.slice(0,Math.min(n,EASY_FACES.length));return easy.concat(all.filter(f=>!easy.includes(f))).slice(0,n);}
-  return all.slice(0,n);
+  const pool=L<=2?EASY_FACES.concat(all.filter(f=>!EASY_FACES.includes(f))):all;
+  const nf=Math.min(34,Math.max(Math.ceil(pairs/2),Math.round(pairs*fr)));
+  const list=pool.slice(0,nf).concat(pool.slice(0,pairs-nf));
+  for(let i=list.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
+  return list;
 }
 function emptiesOf(b){const e=[];for(let i=0;i<b.c.length;i++)if(b.c[i]===EMPTY)e.push(i);return e;}
 function sightEmpties(b,p,skip){const out=[];for(let d=0;d<4;d++){let j=nxt(b,p,d);while(j>=0&&b.c[j]===EMPTY){if(!skip||!skip.has(j))out.push(j);j=nxt(b,j,d);}}return out;}
-function revTap(b,face,rng,ops){
+// 成对的两张尽量不挨着，留出空位给后放的牌挡住，开局就不会一眼全是对子
+function pickFar(b,p,qs,rng){const W=b.W,far=qs.filter(q=>Math.abs(q%W-p%W)+Math.abs((q/W|0)-(p/W|0))>1);const arr=(far.length&&rng()<.88)?far:qs;return arr[Math.floor(rng()*arr.length)];}
+function revTap(b,face,rng,ops,fq){
   const e=emptiesOf(b);if(e.length<2)return false;
   const a=e[Math.floor(rng()*e.length)];const qs=sightEmpties(b,a,null);if(!qs.length)return false;
-  const q=qs[Math.floor(rng()*qs.length)];b.c[a]=face;b.c[q]=face;ops.push({t:0,a,b:q});return true;
+  const q=pickFar(b,a,qs,rng);b.c[a]=face;b.c[q]=face;if(fq)b.fz[q]=1;ops.push({t:0,a,b:q,fz:!!fq});return true;
 }
-function revSlide(b,face,rng,ops){
+function revSlide(b,face,rng,ops,fq,minChain,maxChain){
   const e=emptiesOf(b);if(e.length<3)return false;
   const p=e[Math.floor(rng()*e.length)];const d=Math.floor(rng()*4);const back=d^1;
   let maxK=0;let j=nxt(b,p,back);while(j>=0&&b.c[j]===EMPTY){maxK++;j=nxt(b,j,back);}
   if(!maxK)return false;
-  const ahead=nxt(b,p,d);if(!(ahead>=0&&b.c[ahead]>=0)&&rng()<.6)return false;
+  const ahead=nxt(b,p,d);if(minChain===0&&maxChain>0&&!(ahead>=0&&b.c[ahead]>=0)&&rng()<.6)return false;
   const k=1+Math.floor(rng()*Math.min(maxK,4));
   const behind=new Set();j=p;for(let s=0;s<k;s++){j=nxt(b,j,back);behind.add(j);}
   const qs=sightEmpties(b,p,behind);if(!qs.length)return false;
-  const q=qs[Math.floor(rng()*qs.length)];
+  const q=pickFar(b,p,qs,rng);
   b.c[p]=face;b.c[q]=face;
-  const{chain}=chainOf(b,p,d);
-  const np=moveCells(b.c,[p,...chain],stepOf(b,back)*k);
-  ops.push({t:1,a:np[0],d,k,b:q});return true;
+  const cs=chainOf(b,p,d);
+  if(cs.blocked||cs.chain.length<minChain||cs.chain.length>maxChain){b.c[p]=EMPTY;b.c[q]=EMPTY;return false;}
+  const inChain=cs.chain.includes(q);
+  const np=moveCells(b.c,[p,...cs.chain],stepOf(b,back)*k);
+  const freeze=fq&&!inChain;if(freeze)b.fz[q]=1;
+  ops.push({t:1,a:np[0],d,k,b:q,fz:freeze});return true;
 }
-function tryGenerate(L,P,rng,density){
-  const b=mk(P.cols,P.rows),N=b.c.length;
-  let stones=0,guard=0;
-  while(stones<P.stones&&guard++<300){
-    const x=1+Math.floor(rng()*(P.cols-2)),y=1+Math.floor(rng()*(P.rows-2)),i=y*P.cols+x;
-    if(b.c[i]!==EMPTY)continue;let near=false;for(let d=0;d<4;d++){const n=nxt(b,i,d);if(n>=0&&b.c[n]===STONE)near=true;}
-    if(near)continue;b.c[i]=STONE;stones++;}
-  const pairs=Math.floor((N-stones)*density/2);
-  const faces=pickFaces(L,Math.min(34,Math.max(P.faces,Math.ceil(pairs/2))),rng);
-  const cnt=new Array(faces.length).fill(0),ops=[];
-  for(let p=0;p<pairs;p++){
-    let pool=[];for(let f=0;f<faces.length;f++)if(cnt[f]===0)pool.push(f);
-    if(!pool.length||rng()<.35){pool=[];for(let f=0;f<faces.length;f++)if(cnt[f]<4)pool.push(f);}
-    const fi=pool[Math.floor(rng()*pool.length)];
-    const want=rng()<P.slide;let ok=false;
-    for(let t=0;t<90&&!ok;t++){const s=(t<60)?want:!want;ok=(s&&P.slide>0)?revSlide(b,faces[fi],rng,ops):revTap(b,faces[fi],rng,ops);}
-    if(!ok)return null;cnt[fi]+=2;
+// 「关键牌」节奏：倒推时先攒几对互相看得见的牌（攒对），攒够后挑一步推牌，让推回来的那排牌同时挡住它们（关键牌）。
+// 正着玩就是：先找到关键那排推开（动脑），随即露出好几对连着消（爽），再找下一处关键牌
+function revOp(b,kind,face,rng,fq){
+  const o=[];
+  const ok=kind==='tap'?revTap(b,face,rng,o,fq)
+    :kind==='push'?revSlide(b,face,rng,o,fq,0,0)
+    :kind==='chain'?revSlide(b,face,rng,o,fq,2,9)
+    :revSlide(b,face,rng,o,fq,0,9);
+  return ok?o[0]:null;
+}
+// 一组「闸门」：选一排空格当闸门，在每个闸门格两侧垂直放一对隔空相见的牌，最后把一排牌倒推回来塞满闸门，一次挡住这几对
+function revGroup(b0,faces,fi,rng,maxG){
+  const b=cp(b0),ops=[];
+  const e=emptiesOf(b);if(e.length<8)return null;
+  const p=e[Math.floor(rng()*e.length)],d=Math.floor(rng()*4),back=d^1;
+  const ch=chainOf(b,p,d);if(ch.blocked)return null;
+  let maxK=0,j=nxt(b,p,back);while(j>=0&&b.c[j]===EMPTY){maxK++;j=nxt(b,j,back);}
+  const k=Math.min(maxK,2+Math.floor(rng()*3));
+  const gN=Math.min(k,ch.chain.length+1,maxG);if(gN<2)return null;
+  let g=p;for(let s=0;s<k;s++)g=nxt(b,g,back);
+  const gates=[];for(let s=0;s<gN;s++){gates.push(g);g=nxt(b,g,d);}
+  const perp=d<2?[2,3]:[0,1];
+  const walk=(c,dd)=>{const out=[];let x=nxt(b,c,dd);while(x>=0&&b.c[x]===EMPTY){out.push(x);x=nxt(b,x,dd);}return out;};
+  let used=0;
+  for(const gc of gates){
+    if(fi+used>=faces.length-1)break;
+    const A=walk(gc,perp[0]),B=walk(gc,perp[1]);if(!A.length||!B.length)continue;
+    const a=A[Math.floor(rng()*A.length)],q=B[Math.floor(rng()*B.length)];
+    b.c[a]=faces[fi+used];b.c[q]=faces[fi+used];ops.push({t:0,a,b:q,fz:false});used++;
+  }
+  if(used<2)return null;
+  const behind=new Set();j=p;for(let s=0;s<k;s++){j=nxt(b,j,back);behind.add(j);}
+  const qs=sightEmpties(b,p,behind);if(!qs.length)return null;
+  const q=pickFar(b,p,qs,rng),face=faces[fi+used];
+  b.c[p]=face;b.c[q]=face;
+  const cs=chainOf(b,p,d);if(cs.blocked)return null;
+  const np=moveCells(b.c,[p,...cs.chain],stepOf(b,back)*k);
+  ops.push({t:1,a:np[0],d,k,b:q,fz:false});
+  if(gates.some(gc=>b.c[gc]<0))return null;
+  return{b,ops,used:used+1};
+}
+function tryGenerate(L,P,rng,drop){
+  let b=mk(P.cols,P.rows);const N=b.c.length;
+  const pairs=P.pairs||Math.floor(N*(P.density-drop)/2);
+  const faces=faceList(L,pairs,P.fr,rng);
+  const script=P.script?P.script.slice().reverse():null;
+  const K=P.script?16:(P.K??24);
+  let frozenLeft=P.frozen||0;const ops=[];
+  for(let p=0;p<pairs;){
+    const left=pairs-p,tail=!script&&left<=(P.tail||0);
+    if(!script&&!tail&&left>=3&&rng()<(P.group??.6)){
+      let gr=null;for(let t=0;t<40&&!gr;t++)gr=revGroup(b,faces,p,rng,Math.min(4,left-1));
+      if(gr){b=gr.b;ops.push(...gr.ops);p+=gr.used;continue;}
+    }
+    // 单步：挑放完后盘面上现成对子最少的放法，让开局和闸门之间保持紧凑
+    const kind=script?script[p]:(tail||rng()<P.slide)?'slide':'tap';
+    const fq=frozenLeft>0&&rng()<frozenLeft/left;
+    let best=null;
+    for(const k of script?[kind]:[kind,kind==='tap'?'slide':'tap']){
+      for(let t=0,n=0;t<K*8&&n<K;t++){
+        const nb=cp(b);const op=revOp(nb,k,faces[p],rng,fq);if(!op)continue;n++;
+        const sc=tapMoves(nb).length+rng()*.6;
+        if(!best||sc<best.sc)best={nb,op,sc};
+      }
+      if(best)break;
+    }
+    if(!best)return null;
+    b=best.nb;ops.push(best.op);if(best.op.fz)frozenLeft--;p++;
   }
   ops.reverse();
-  return{b,ops,P,total:pairs*2};
+  return{b,ops,P,L,total:pairs*2};
 }
+function generateSeed(L,seed){
+  const P=levelParams(L);const rng=rngOf(((L*2654435761)^Math.imul(seed+1,0x9e3779b1))>>>0);
+  for(let t=0;t<240;t++){const g=tryGenerate(L,P,rng,Math.floor(t/80)*.04);if(g&&listMoves(g.b,true).length){g.seed=seed;return g;}}
+  return null;
+}
+// 沿标准解统计每一步能直接点消的对数；某一步后对数猛增，说明这一步「打开了局面」
+function profile(g){
+  let b=cp(g.b);const taps=[];
+  for(const m of g.ops){taps.push(tapMoves(b).length);b=applyMove(b,m);}
+  let bursts=0;for(let i=1;i<taps.length;i++)if(taps[i]-taps[i-1]>=2)bursts++;
+  return{open0:taps[0],bursts,taps};
+}
+// 模拟一个顺手就点的玩家：有现成对子就随便消一对，没有才去推。统计：
+// push 必须推的步数占比（越高越要动脑），burst 平均每局有几次「一步露出 3 对以上」（爽点），trap 被彻底卡死的比例
+function playStats(g,n,seed){
+  const rng=rngOf(seed*31+7);let stuck=0,pushSteps=0,steps=0,bursts=0;
+  for(let k=0;k<n;k++){
+    let b=cp(g.b),prev=tapMoves(b).length;
+    while(tilesLeft(b)){
+      let ms=tapMoves(b);steps++;
+      if(!ms.length){pushSteps++;ms=listMoves(b,false);}
+      if(!ms.length){stuck++;break;}
+      b=applyMove(b,ms[Math.floor(rng()*ms.length)]);
+      const now=tapMoves(b).length;if(now-prev>=2&&now>=3)bursts++;prev=now;
+    }
+  }
+  return{trap:stuck/n,push:pushSteps/steps,burst:bursts/n};
+}
+function scoreLevel(g,playN){
+  const P=g.P,pr=profile(g);g.profile=pr;
+  if(P.script){const t=pr.taps;return(t[0]===1&&t[1]===0&&t[2]===0&&t[3]>=2)?100+t[3]:-100;}
+  let s=Math.min(pr.bursts,P.bursts)*6;
+  const[lo,hi]=P.open;s-=pr.open0<lo?(lo-pr.open0)*30:pr.open0>hi?(pr.open0-hi)*14:0;
+  if(playN){
+    const st=playStats(g,playN,g.seed);g.stats=st;
+    const[a,c]=P.push;s-=st.push<a?(a-st.push)*150:st.push>c?(st.push-c)*150:0;
+    if(st.trap>.5)s-=(st.trap-.5)*80;
+  }
+  return s;
+}
+/*SEEDS-START*/const LEVEL_SEEDS=[null,0,4,5,4,21,6,8,19,13,28,10,15,5,5,9,18,17,6,12,9,4,8,12,8,12,6,11,8,4,3,9,0,18,15,5,3,17,4,16,2,15,4,3,8,6,13,11,4,15,15,0,15,15,9,17,0,4,10,6,14];/*SEEDS-END*/
 function generate(L){
-  const P=levelParams(L);const rng=rngOf(L*2654435761^0x9e3779);
-  for(let t=0;t<90;t++){const g=tryGenerate(L,P,rng,P.density-Math.floor(t/30)*.04);if(g&&listMoves(g.b,true).length)return g;}
-  throw new Error('关卡生成失败 '+L);
+  if(LEVEL_SEEDS[L]!=null){const g=generateSeed(L,LEVEL_SEEDS[L]);if(g)return g;}
+  let best=null,bs=-1e9;
+  for(let s=0;s<8;s++){const g=generateSeed(L,500+s);if(!g)continue;const sc=scoreLevel(g,0);if(sc>bs){bs=sc;best=g;}}
+  if(!best)throw new Error('关卡生成失败 '+L);
+  return best;
 }
 /*ENGINE-END*/
 
@@ -470,7 +633,6 @@ function faceSVG(f){
   else g=`<rect x="11" y="13" width="38" height="54" rx="5" fill="none" stroke="${COL.blue}" stroke-width="3.2"/><rect x="17" y="19" width="26" height="42" rx="2.5" fill="none" stroke="${COL.blue}" stroke-width="1.4"/>`;
   return FACE_CACHE[f]=`<svg viewBox="0 0 60 80" aria-hidden="true">${g}</svg>`;
 }
-const STONE_SVG=`<svg viewBox="0 0 60 80" aria-hidden="true"><path d="M14 18l9 12-4 10 11 9-3 14M30 49l12-6 6 9M23 30l13-4" fill="none" stroke="#5c5952" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/><path d="M15 19l9 12" stroke="#d8d4cb" stroke-width="1" opacity=".6"/></svg>`;
 const HAND_SVG=`<svg viewBox="0 0 38 46" aria-hidden="true"><path d="M12.5 4.5a3.6 3.6 0 0 1 7.2 0V19l8.6 1.8a5.4 5.4 0 0 1 4.3 6.2l-1.8 9.6A7.2 7.2 0 0 1 23.7 42.5h-7.5a7.2 7.2 0 0 1-5.6-2.7L3.6 31a3.6 3.6 0 0 1 5.4-4.7l3.5 3.4z" fill="#fffdf6" stroke="#1d2330" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 
 // ===== 声音：WebAudio 合成，无外部资源 =====
@@ -502,8 +664,10 @@ const sfx={
   tick(){noise(.025,.18,2600,2000);},
   select(){this.clack();tone(880,.09,'sine',.06,.02);},
   slide(){noise(.16,.22,700,2600);},
+  crack(){noise(.12,.45,900,400);noise(.08,.3,2400,1200,.04);},
   match(combo){this.clack();const f=523.25*Math.pow(2,PENTA[Math.min(combo-1,PENTA.length-1)]/12);
     tone(f,.2,'triangle',.13,.03);tone(f*1.5,.24,'sine',.07,.08);tone(f*2,.32,'sine',.045,.13);},
+  open(){[784,988,1175,1568].forEach((f,i)=>tone(f,.22,'sine',.06,.1+i*.06));},
   nope(){tone(190,.11,'square',.035);tone(150,.13,'square',.03,.05);},
   undo(){tone(620,.14,'sine',.07,0,.55);},
   hint(){tone(1046,.12,'sine',.06);tone(1318,.16,'sine',.05,.08);},
@@ -516,9 +680,9 @@ function buzz(ms){try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
 const FX={cv:null,ctx:null,ps:[],run:false,dpr:1,last:0};
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function fxResize(){const cv=FX.cv;FX.dpr=Math.min(2,devicePixelRatio||1);cv.width=innerWidth*FX.dpr;cv.height=innerHeight*FX.dpr;}
-function burst(x,y,colors,n){
+function burst(x,y,colors,n,speed=1){
   n=reduceMotion?Math.ceil(n/4):n;
-  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=.08+Math.random()*.28;
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=(.08+Math.random()*.28)*speed;
     FX.ps.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-.12,g:.00055,life:0,max:520+Math.random()*420,s:2.5+Math.random()*4,
       r:Math.random()*6,vr:(Math.random()-.5)*.02,c:colors[i%colors.length],star:Math.random()<.35});}
   fxStart();
@@ -546,51 +710,63 @@ function fxLoop(now){
   if(FX.ps.length)requestAnimationFrame(fxLoop);else{FX.run=false;ctx.clearRect(0,0,FX.cv.width,FX.cv.height);}
 }
 
-// ===== 存档（只存在本机浏览器）=====
-const SAVE_KEY='tuitui-mahjong-v1';
-let SAVE={unlocked:1,stars:{},muted:false,best:0};
+// ===== 存档（只存在本机浏览器）。records 按关保存最佳用时，留给以后的排行榜 =====
+const SAVE_KEY='tuitui-mahjong-v2';
+let SAVE={unlocked:1,stars:{},records:{},muted:false};
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&typeof s==='object')SAVE=Object.assign(SAVE,s);}catch(e){}}
 function writeSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
 
 // ===== 游戏状态 =====
 const TOOLS={undo:5,hint:3,shuffle:2};
-const G={level:1,b:null,ids:null,ops:null,total:0,score:0,levelScore:0,combo:0,lastMatch:0,tools:{...TOOLS},used:0,
-  hist:[],busy:false,sel:-1,cands:[],pending:null,els:[],cw:40,ch:50,pad:10,touched:false,demo:null};
+const PENALTY_MS=20000;
+const COMBO_MS=3000;
+const G={level:1,b:null,ids:null,ops:null,total:0,score:0,levelScore:0,combo:0,maxCombo:0,lastMatch:0,tools:{...TOOLS},used:0,
+  hist:[],busy:false,sel:-1,cands:[],pending:null,els:[],cw:40,ch:50,pad:10,touched:false,demo:null,
+  active:false,elapsed:0,runFrom:0,penalty:0,idleTimer:0};
 const $=id=>document.getElementById(id);
 const board=$('board'),stage=$('stage');
 
 function cellXY(i){const W=G.b.W;return{x:G.pad+(i%W)*G.cw+1.5,y:G.pad+((i/W)|0)*G.ch+1.5};}
 function cellCenter(i){const r=board.getBoundingClientRect(),p=cellXY(i);return{x:r.left+p.x+(G.cw-3)/2,y:r.top+p.y+(G.ch-3-G.dp)/2};}
-function idAt(i){return G.ids[i];}
 function elAt(i){const id=G.ids[i];return id>=0?G.els[id]:null;}
+
+// ===== 计时：只在牌桌可见且没有弹窗时走表 =====
+function timerRunning(){return G.runFrom>0;}
+function timerStart(){if(G.active&&!G.runFrom&&!anyOverlay()&&!document.hidden)G.runFrom=performance.now();}
+function timerPause(){if(G.runFrom){G.elapsed+=performance.now()-G.runFrom;G.runFrom=0;}}
+function timeMs(){return G.elapsed+(G.runFrom?performance.now()-G.runFrom:0)+G.penalty;}
+function fmt(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+setInterval(()=>{if(G.b)$('time').textContent=fmt(timeMs());},250);
+document.addEventListener('visibilitychange',()=>{document.hidden?timerPause():timerStart();});
 
 function startLevel(L,restore){
   G.level=L;
   const gen=generate(L);
   G.ops=gen.ops;G.total=gen.total;G.b=cp(gen.b);G.init=cp(gen.b);
   G.ids=new Int16Array(G.b.c.length).fill(-1);
-  board.innerHTML='';G.els=[];
+  board.innerHTML='';G.els=[];G.slots=[];
   const frag=document.createDocumentFragment();
-  G.slots=[];
   for(let i=0;i<G.b.c.length;i++){const s=document.createElement('div');s.className='slot';frag.appendChild(s);G.slots.push(s);}
   for(let i=0;i<G.b.c.length;i++){
     const v=G.b.c[i];if(v===EMPTY)continue;
     const id=G.els.length,el=document.createElement('div');
-    el.className='tile'+(v===STONE?' stone':'');el.dataset.id=id;el.innerHTML=v===STONE?STONE_SVG:faceSVG(v);
+    el.className='tile';el.dataset.id=id;el.dataset.face=v;el.innerHTML=faceSVG(v);
     G.ids[i]=id;G.els.push(el);frag.appendChild(el);
   }
   const hand=document.createElement('div');hand.className='hand';hand.innerHTML=HAND_SVG;frag.appendChild(hand);G.hand=hand;
   board.appendChild(frag);
-  G.tools={...TOOLS};G.used=0;G.hist=[];G.sel=-1;G.cands=[];G.pending=null;G.combo=0;G.levelScore=0;G.busy=false;G.touched=false;
-  if(restore){G.b.c=Int8Array.from(restore.c);G.ids=Int16Array.from(restore.ids);G.tools=restore.tools;G.used=restore.used;G.levelScore=restore.levelScore||0;}
+  Object.assign(G,{tools:{...TOOLS},used:0,hist:[],sel:-1,cands:[],pending:null,combo:0,maxCombo:0,levelScore:0,busy:false,touched:false,
+    active:true,elapsed:0,runFrom:0,penalty:0});
+  if(restore){G.b.c=Int8Array.from(restore.c);G.b.fz=Uint8Array.from(restore.fz);G.ids=Int16Array.from(restore.ids);
+    Object.assign(G,{tools:restore.tools,used:restore.used,levelScore:restore.levelScore||0,elapsed:restore.elapsed||0,penalty:restore.penalty||0,maxCombo:restore.maxCombo||0});}
   $('lvl').textContent=`第 ${L} 关`;
-  layout(true);updateHud();showTutorial();
+  layout(true);updateHud();timerStart();showTutorial();
 }
 
 function layout(instant){
   if(!G.b)return;
   const st=stage.getBoundingClientRect(),W=G.b.W,H=G.b.H,pad=10,ratio=1.27;
-  let cw=Math.floor(Math.min((st.width-pad*2)/W,(st.height-pad*2-34)/(H*ratio)));
+  let cw=Math.floor(Math.min((st.width-pad*2)/W,(st.height-pad*2-64)/(H*ratio)));
   cw=Math.max(24,Math.min(cw,70));const ch=Math.round(cw*ratio);const dp=Math.max(3,Math.round(cw*.1));
   Object.assign(G,{cw,ch,pad,dp});
   board.style.width=(W*cw+pad*2)+'px';board.style.height=(H*ch+pad*2)+'px';
@@ -605,28 +781,37 @@ function render(){
   const present=new Set();
   for(let i=0;i<G.ids.length;i++){const id=G.ids[i];if(id<0)continue;present.add(id);
     const el=G.els[id];if(el.dataset.dying){el.getAnimations().forEach(a=>a.cancel());delete el.dataset.dying;}
-    const p=cellXY(i);el.hidden=false;el.style.transform=`translate(${p.x}px,${p.y}px)`;el.style.zIndex=2+((i/G.b.W)|0)*2;}
+    const p=cellXY(i);el.hidden=false;el.style.transform=`translate(${p.x}px,${p.y}px)`;el.style.zIndex=2+((i/G.b.W)|0)*2;
+    el.classList.toggle('frozen',!!G.b.fz[i]);}
   G.els.forEach((el,id)=>{if(!present.has(id)&&!el.dataset.dying)el.hidden=true;});
 }
 
 function updateHud(){
   $('score').textContent=G.score;
   const left=tilesLeft(G.b);$('prog').style.width=((1-left/G.total)*100).toFixed(1)+'%';
-  for(const k of ['undo','hint','shuffle']){const n=G.tools[k];$('n'+k[0].toUpperCase()+k.slice(1)).textContent=n;$('t'+k[0].toUpperCase()+k.slice(1)).disabled=!n;}
+  for(const k of ['undo','hint','shuffle']){const n=G.tools[k],K=k[0].toUpperCase()+k.slice(1),bd=$('n'+K);
+    bd.textContent=n>0?n:'+20秒';bd.classList.toggle('cost',n<=0);}
 }
 
 // ===== 选择、配对与消除 =====
 function clearSel(){G.els.forEach(el=>el.classList.remove('sel','cand'));G.sel=-1;G.cands=[];}
 function setSel(i,cands){clearSel();G.sel=i;G.cands=cands;elAt(i).classList.add('sel');cands.forEach(c=>elAt(c).classList.add('cand'));}
 function clearHint(){G.els.forEach(el=>el.classList.remove('hint'));if(G.hand){G.hand.getAnimations().forEach(a=>a.cancel());G.hand.style.opacity=0;}G.demo=null;}
-function pushHist(){G.hist.push({c:G.b.c.slice(),ids:G.ids.slice(),score:G.score,levelScore:G.levelScore});if(G.hist.length>60)G.hist.shift();}
+function pushHist(){G.hist.push({c:G.b.c.slice(),fz:G.b.fz.slice(),ids:G.ids.slice(),score:G.score,levelScore:G.levelScore});if(G.hist.length>80)G.hist.shift();}
 function shake(el){if(!el)return;el.animate([{translate:'0 0'},{translate:'-5px 0'},{translate:'5px 0'},{translate:'-3px 0'},{translate:'0 0'}],{duration:260,easing:'ease-out'});}
+function tapKeys(){const s=new Set();for(const m of tapMoves(G.b)){const a=G.ids[m.a],b=G.ids[m.b];s.add(a<b?a+'-'+b:b+'-'+a);}return s;}
+const COMBO_WORDS={4:'好手！',6:'妙啊！',8:'神了！',10:'停不下来！'};
 
-function eliminate(i,j){
+function comboBar(){
+  const i=$('cbar');i.style.transition='none';i.style.width='100%';i.offsetWidth;
+  i.style.transition=`width ${COMBO_MS}ms linear`;i.style.width='0%';
+}
+function eliminate(i,j,before){
   const ea=elAt(i),eb=elAt(j);
   const ca=cellCenter(i),cb=cellCenter(j);
-  G.b.c[i]=EMPTY;G.b.c[j]=EMPTY;G.ids[i]=-1;G.ids[j]=-1;
-  const now=performance.now();G.combo=(now-G.lastMatch<2600)?G.combo+1:1;G.lastMatch=now;
+  const wasFrozen=G.b.fz[i]||G.b.fz[j];
+  G.b.c[i]=EMPTY;G.b.c[j]=EMPTY;G.b.fz[i]=0;G.b.fz[j]=0;G.ids[i]=-1;G.ids[j]=-1;
+  const now=performance.now();G.combo=(now-G.lastMatch<COMBO_MS)?G.combo+1:1;G.lastMatch=now;G.maxCombo=Math.max(G.maxCombo,G.combo);
   const gain=10*G.combo;G.score+=gain;G.levelScore+=gain;
   const mx=(ca.x+cb.x)/2,my=(ca.y+cb.y)/2;
   [[ea,ca],[eb,cb]].forEach(([el,c])=>{
@@ -639,40 +824,61 @@ function eliminate(i,j){
       {duration:reduceMotion?120:400,easing:'cubic-bezier(.3,.6,.4,1)',fill:'forwards'});
     an.onfinish=()=>{if(el.dataset.dying){el.hidden=true;delete el.dataset.dying;an.cancel();}};
   });
-  setTimeout(()=>{const cols=['#f2c45a','#ffe7a3','#fbf6e8',G.combo>2?'#d23d2f':'#2f9a70'];burst(ca.x,ca.y,cols,16+G.combo*3);burst(cb.x,cb.y,cols,16+G.combo*3);},150);
-  sfx.match(G.combo);buzz(G.combo>2?[12,30,12]:12);
-  floatText('+'+gain,mx,my);
+  const big=G.combo>=4;
+  setTimeout(()=>{
+    const cols=['#f2c45a','#ffe7a3','#fbf6e8',G.combo>2?'#d23d2f':'#2f9a70'];
+    burst(ca.x,ca.y,cols,16+G.combo*3,big?1.3:1);burst(cb.x,cb.y,cols,16+G.combo*3,big?1.3:1);
+    if(wasFrozen){burst(mx,my,['#9a968d','#c9c5bb','#5f5b54'],18,1.2);}
+  },150);
+  sfx.match(G.combo);if(wasFrozen)sfx.crack();buzz(G.combo>2?[12,30,12]:12);
+  floatText('+'+gain,mx,my);comboBar();
   if(G.combo>=2)showCombo(G.combo);
-  if(!G.touched){G.touched=true;hideTip();}
+  if(big){board.classList.remove('flash');board.offsetWidth;board.classList.add('flash');}
+  if(!G.touched){G.touched=true;}
   clearHint();
+  // 这一步新露出来的可消对子：两对以上闪一下，三对以上算「打开局面」
+  if(before){
+    const fresh=[];for(const k of tapKeys())if(!before.has(k))fresh.push(k);
+    if(fresh.length>=2){setTimeout(()=>{fresh.forEach(k=>k.split('-').forEach(id=>{const el=G.els[+id];el.classList.remove('glint');el.offsetWidth;el.classList.add('glint');}));},260);}
+    if(fresh.length>=3){setTimeout(()=>{showBanner(`打开局面 · ${fresh.length} 对`);sfx.open();},300);}
+  }
   updateHud();afterMove();
 }
-function floatText(s,x,y){
-  const r=stage.getBoundingClientRect();const f=document.createElement('div');f.className='float';f.textContent=s;
+function floatText(s,x,y,cls){
+  const r=stage.getBoundingClientRect();const f=document.createElement('div');f.className='float'+(cls?' '+cls:'');f.textContent=s;
   f.style.left=(x-r.left)+'px';f.style.top=(y-r.top)+'px';stage.appendChild(f);
   f.animate([{opacity:0,transform:'translateY(6px) scale(.8)'},{opacity:1,transform:'translateY(-8px) scale(1.1)',offset:.25},{opacity:0,transform:'translateY(-44px) scale(1)'}],{duration:900,easing:'ease-out'}).onfinish=()=>f.remove();
 }
 function showCombo(n){
-  const el=$('combo');el.textContent=`连消 ×${n}`;
+  const el=$('combo');const word=COMBO_WORDS[n]||(n>10&&n%2===0?'停不下来！':'');
+  el.textContent=word?`${word} 连消 ×${n}`:`连消 ×${n}`;el.classList.toggle('big',n>=6);
+  el.getAnimations().forEach(a=>a.cancel());
   el.animate([{opacity:0,scale:.6},{opacity:1,scale:1.18,offset:.2},{opacity:1,scale:1,offset:.7},{opacity:0,scale:1}],{duration:1100,easing:'ease-out'});
 }
+function showBanner(s){
+  const el=$('combo');el.textContent=s;el.classList.remove('big');
+  el.getAnimations().forEach(a=>a.cancel());
+  el.animate([{opacity:0,scale:.7},{opacity:1,scale:1.1,offset:.2},{opacity:1,scale:1,offset:.75},{opacity:0,scale:1}],{duration:1300,easing:'ease-out'});
+}
 function afterMove(){
-  if(tilesLeft(G.b)===0){G.busy=true;setTimeout(winLevel,520);return;}
-  if(!listMoves(G.b,true).length)setTimeout(()=>{if(tilesLeft(G.b)&&!listMoves(G.b,true).length)openStuck();},560);
+  bumpIdle();
+  if(tilesLeft(G.b)===0){G.busy=true;G.active=false;timerPause();setTimeout(winLevel,520);return;}
+  if(!listMoves(G.b,true).length){setTimeout(()=>{if(tilesLeft(G.b)&&!listMoves(G.b,true).length)openStuck();},560);return;}
+  if(G.level===1)setTimeout(guideNext,650);
 }
 
 function onTap(i){
   clearHint();
-  if(G.pending){if(G.pending.cands.includes(i)){const p=G.pending;G.pending=null;clearSel();eliminate(p.pos,i);}else cancelPending();return;}
-  if(G.sel>=0&&G.cands.includes(i)){const a=G.sel;clearSel();pushHist();eliminate(a,i);return;}
+  if(G.pending){if(G.pending.cands.includes(i)){const p=G.pending;G.pending=null;clearSel();eliminate(p.pos,i,p.before);}else cancelPending();return;}
+  if(G.sel>=0&&G.cands.includes(i)){const a=G.sel;clearSel();const before=tapKeys();pushHist();eliminate(a,i,before);return;}
   const ps=partners(G.b,i);
-  if(ps.length===1){clearSel();pushHist();eliminate(i,ps[0]);}
+  if(ps.length===1){clearSel();const before=tapKeys();pushHist();eliminate(i,ps[0],before);}
   else if(ps.length>1){setSel(i,ps);sfx.select();}
-  else{clearSel();shake(elAt(i));sfx.nope();}
+  else{clearSel();shake(elAt(i));sfx.nope();if(G.level===1)setTimeout(guideNext,500);}
 }
 function cancelPending(){
   const s=G.hist.pop();G.pending=null;clearSel();
-  if(s){G.b.c=s.c;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;}
+  if(s){G.b.c=s.c;G.b.fz=s.fz;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;}
   render();sfx.nope();
 }
 
@@ -693,9 +899,9 @@ function markCands(ids){G.els.forEach(el=>el.classList.remove('cand'));ids.forEa
 board.addEventListener('pointerdown',e=>{
   if(G.busy||!G.b)return;ac();
   const el=e.target.closest('.tile');
-  if(!el||el.classList.contains('stone')||el.dataset.dying){if(G.pending)cancelPending();else clearSel();return;}
+  if(!el||el.dataset.dying){if(G.pending)cancelPending();else clearSel();return;}
   const i=G.ids.indexOf(+el.dataset.id);if(i<0)return;
-  PT={i,x0:e.clientX,y0:e.clientY,drag:false,dir:-1,k:0,moved:[],cands:[],candIds:[],pos:i,cache:{}};
+  PT={i,x0:e.clientX,y0:e.clientY,drag:false,dir:-1,k:0,moved:[],cands:[],candIds:[],pos:i,cache:{},frozen:!!G.b.fz[i]};
   try{board.setPointerCapture(e.pointerId);}catch(_){}
 });
 board.addEventListener('pointermove',e=>{
@@ -703,13 +909,14 @@ board.addEventListener('pointermove',e=>{
   if(!PT.drag){
     if(Math.hypot(dx,dy)<8)return;
     if(G.pending){PT=null;cancelPending();return;}
+    if(PT.frozen){const el=elAt(PT.i);PT=null;shake(el);sfx.crack();toast('石化的牌推不动，把同样的牌推过来和它配对',2400);return;}
     PT.drag=true;PT.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';clearSel();clearHint();elAt(PT.i).classList.add('lift');
   }
   const along=PT.axis==='x'?dx:dy,unit=PT.axis==='x'?G.cw:G.ch;
   const d=PT.axis==='x'?(along>=0?0:1):(along>=0?2:3);
   if(d!==PT.dir){
     if(PT.moved.length)resetVisual(PT.moved.filter(c=>c!==PT.i));
-    const info=chainOf(G.b,PT.i,d);PT.dir=d;PT.free=info.free;PT.moved=[PT.i,...info.chain];PT.k=-1;
+    const info=chainOf(G.b,PT.i,d);PT.dir=d;PT.free=info.free;PT.blocked=info.blocked;PT.moved=[PT.i,...info.chain];PT.k=-1;
     elAt(PT.i).classList.add('lift');
   }
   const maxPx=PT.free*unit;let px=Math.abs(along);if(px>maxPx)px=maxPx+Math.min(16,(px-maxPx)*.22);
@@ -727,33 +934,39 @@ function endPointer(cancelled){
   if(!p.drag){if(!cancelled)onTap(p.i);return;}
   markCands([]);
   if(!cancelled&&p.k>0&&p.cands.length){
-    pushHist();
+    const before=tapKeys();pushHist();
     const cells=pushCells(G.b,p.i,p.dir),s=stepOf(G.b,p.dir)*p.k;
     moveCells(G.b.c,cells,s);moveCells(G.ids,cells,s);
     p.moved.forEach(c=>{const el=G.els[G.ids[c+s]];el&&el.classList.remove('dragging','lift');});
     render();sfx.slide();
-    if(p.cands.length===1){G.busy=true;setTimeout(()=>{G.busy=false;eliminate(p.pos,p.cands[0]);},150);}
-    else{G.pending={pos:p.pos,cands:p.cands};setSel(p.pos,p.cands);}
+    if(p.cands.length===1){G.busy=true;setTimeout(()=>{G.busy=false;eliminate(p.pos,p.cands[0],before);},150);}
+    else{G.pending={pos:p.pos,cands:p.cands,before};setSel(p.pos,p.cands);}
   }else{
     resetVisual(p.moved);
-    if(p.k>0){sfx.nope();setTimeout(()=>shake(elAt(p.i)),170);}
+    if(p.k>0||p.blocked){sfx.nope();setTimeout(()=>shake(elAt(p.i)),170);if(p.blocked)toast('前面有石化的牌挡着，推不动',1800);}
+    if(G.level===1)setTimeout(guideNext,500);
   }
 }
 board.addEventListener('pointerup',()=>endPointer(false));
 board.addEventListener('pointercancel',()=>endPointer(true));
 
-// ===== 道具 =====
+// ===== 道具：次数用完仍可用，每次加 20 秒，不打断节奏 =====
 function toast(s,ms=2200){const t=$('toast');t.textContent=s;t.classList.remove('hide');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.add('hide'),ms);}
-function useUndo(fromStuck){
-  if(G.busy)return;if(!G.tools.undo){shake($('tUndo'));return;}
+function spendTool(k){
+  if(G.tools[k]>0){G.tools[k]--;}
+  else{G.penalty+=PENALTY_MS;const r=$('clock').getBoundingClientRect();floatText('+20秒',r.left+r.width/2,r.bottom+14,'penalty');}
+  if(k!=='undo')G.used++;updateHud();
+}
+function useUndo(){
+  if(G.busy)return;
   if(G.pending){cancelPending();return;}
-  const s=G.hist.pop();if(!s){toast('已经回到开局了');return;}
-  G.tools.undo--;clearSel();clearHint();
+  if(!G.hist.length){toast('已经回到开局了');return;}
+  const s=G.hist.pop();spendTool('undo');clearSel();clearHint();
   const before=new Set();G.ids.forEach(id=>id>=0&&before.add(id));
-  G.b.c=s.c;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;G.combo=0;
+  G.b.c=s.c;G.b.fz=s.fz;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;G.combo=0;
   render();
   G.ids.forEach(id=>{if(id>=0&&!before.has(id))G.els[id].animate([{opacity:0,scale:1.25},{opacity:1,scale:1}],{duration:260,easing:'ease-out'});});
-  sfx.undo();updateHud();
+  sfx.undo();updateHud();bumpIdle();
 }
 function findHint(){
   // 玩家一直走在生成时的标准解上，就直接给下一步
@@ -765,23 +978,25 @@ function findHint(){
   return{m:ms.find(m=>m.t===0)||ms[0]||null,dead:!r.capped};
 }
 function useHint(){
-  if(G.busy||G.pending)return;if(!G.tools.hint){shake($('tHint'));return;}
+  if(G.busy||G.pending)return;
   clearSel();clearHint();
   const {m,dead}=findHint();
-  if(!m){toast('没有能走的步了，试试洗牌');shake($('tShuffle'));return;}
-  G.tools.hint--;G.used++;updateHud();sfx.hint();
-  if(dead)toast('这一盘已经解不开了，建议撤销或洗牌',2800);
-  showMove(m,true);
+  if(!m){openStuck();return;}
+  if(dead){toast('这一盘已经解不开了，洗一下牌吧',2600);pulseTool('tShuffle');return;}
+  spendTool('hint');sfx.hint();showMove(m,true);
 }
+function pulseTool(id){$(id).querySelector('.cap').animate([{scale:1},{scale:1.15},{scale:1}],{duration:420,iterations:3});}
+function moveKind(m){if(m.t===0)return'tap';return chainOf(G.b,m.a,m.d).chain.length?'chain':'push';}
 function showMove(m,loop){
   clearHint();
   if(m.t===0){elAt(m.a).classList.add('hint');elAt(m.b).classList.add('hint');pointAt(m.a,null,0,loop);}
-  else{const r=simulate(m.a,m.d,m.k);elAt(m.a).classList.add('hint');r.candIds.forEach((id,n)=>{if(r.cands[n]===m.b)G.els[id].classList.add('hint');});pointAt(m.a,m.d,m.k,loop);}
+  else{const r=simulate(m.a,m.d,m.k);elAt(m.a).classList.add('hint');r.candIds.forEach((id,n)=>{if(r.cands[n]===m.b)G.els[id].classList.add('hint');});
+    chainOf(G.b,m.a,m.d).chain.forEach(c=>elAt(c).classList.add('hint'));pointAt(m.a,m.d,m.k,loop);}
   G.demo=m;
 }
 function pointAt(i,d,k,loop){
   const h=G.hand,p=cellXY(i);const x=p.x+(G.cw-3)/2-12,y=p.y+(G.ch-G.dp)/2-4;
-  h.style.opacity=1;h.style.left='0';h.style.top='0';
+  h.style.opacity=1;
   if(d===null){
     h.animate([{transform:`translate(${x}px,${y+10}px)`,opacity:0},{transform:`translate(${x}px,${y}px)`,opacity:1,offset:.3},{transform:`translate(${x}px,${y+4}px) scale(.92)`,offset:.5},{transform:`translate(${x}px,${y}px)`,offset:.7},{transform:`translate(${x}px,${y}px)`,opacity:0}],
       {duration:1300,iterations:loop?Infinity:1});
@@ -792,67 +1007,78 @@ function pointAt(i,d,k,loop){
   }
 }
 function useShuffle(){
-  if(G.busy||G.pending)return;if(!G.tools.shuffle){shake($('tShuffle'));return;}
+  if(G.busy||G.pending)return;
   closeOverlay('stuck');clearSel();clearHint();
-  const pos=[],ids=[];for(let i=0;i<G.b.c.length;i++)if(G.b.c[i]>=0){pos.push(i);ids.push(G.ids[i]);}
-  if(pos.length<2)return;
-  const faceOf=id=>{for(let i=0;i<G.ids.length;i++)if(G.ids[i]===id)return G.b.c[i];};
-  const faces=new Map(ids.map(id=>[id,faceOf(id)]));
-  let best=null,bestOrder=null;
-  for(let t=0;t<14;t++){
-    const order=ids.slice();for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
-    const nb=cp(G.b);pos.forEach((p,n)=>nb.c[p]=faces.get(order[n]));
-    if(solve(nb,1200,2).ok){best=nb;bestOrder=order;break;}
-    if(!best&&listMoves(nb,true).length){best=nb;bestOrder=order;}
-  }
-  if(!best){toast('洗不出能走的牌了，重来本关吧');return;}
-  pushHist();G.tools.shuffle--;G.used++;G.combo=0;
-  G.b=best;pos.forEach((p,n)=>G.ids[p]=bestOrder[n]);
+  // 规划几条不同路线，挑洗完后现成对子最接近 3 对的
+  let best=null,bd=1e9;
+  for(let t=0;t<4&&bd>1;t++){const p=planShuffle(G.b,rngOf((Math.random()*1e9)|0));if(!p)continue;const dd=Math.abs(tapMoves(p.b).length-3);if(dd<bd){bd=dd;best=p;}}
+  if(!best){toast('这一盘洗不动了，重来本关吧');return;}
+  pushHist();spendTool('shuffle');G.combo=0;
+  // 牌面按新盘面重新分配给现有的牌，牌会飞到新位置
+  const byFace=new Map();for(let i=0;i<G.b.c.length;i++)if(G.b.c[i]>=0){const f=G.b.c[i];if(!byFace.has(f))byFace.set(f,[]);byFace.get(f).push(G.ids[i]);}
+  const nids=new Int16Array(G.ids.length).fill(-1);
+  for(let i=0;i<best.b.c.length;i++)if(best.b.c[i]>=0)nids[i]=byFace.get(best.b.c[i]).pop();
+  G.b=best.b;G.ids=nids;
   G.els.forEach(el=>el.classList.add('slow'));render();setTimeout(()=>G.els.forEach(el=>el.classList.remove('slow')),560);
-  sfx.shuffle();updateHud();
+  sfx.shuffle();updateHud();bumpIdle();
+  if(best.thawed)toast('石化的牌也一起解开了');
+  if(G.level===1)setTimeout(guideNext,700);
 }
-$('tUndo').onclick=()=>useUndo();
+$('tUndo').onclick=useUndo;
 $('tHint').onclick=useHint;
 $('tShuffle').onclick=useShuffle;
 
-// ===== 新手引导 =====
+// ===== 新手引导：第 1 关手把手，第 2 关空闲太久再提示，第 4 关介绍石化牌 =====
+const GUIDE={tap:'两张相同的牌在一条线上、中间没挡着，点一下就消',push:'按住牌拖过去，和同样的牌对上就消',chain:'前面挨着的牌会被一起推走，整排都能推'};
 function showTip(s){const t=$('tip');t.textContent=s;t.classList.remove('fade');}
 function hideTip(){$('tip').classList.add('fade');}
+function guideNext(){
+  if(G.level!==1||!G.active||G.busy||G.pending||anyOverlay())return;
+  const {m}=findHint();if(!m)return;
+  showTip(GUIDE[moveKind(m)]);showMove(m,true);
+}
+function bumpIdle(){
+  clearTimeout(G.idleTimer);
+  if(G.level===2&&G.active)G.idleTimer=setTimeout(()=>{if(G.active&&!anyOverlay()&&!G.demo){const {m}=findHint();if(m){showMove(m,true);showTip(GUIDE[moveKind(m)]);}}},12000);
+}
 function showTutorial(){
-  hideTip();
-  const L=G.level;let tip='';
-  if(L===1)tip='直线上无遮挡的两张相同牌，点一下就消';
-  else if(L===2)tip='按住牌拖动，前面挨着的牌会被一起推走，推到能配对处松手';
-  else if(L===5)tip='石块推不动，也会挡住视线';
-  if(!tip)return;
-  setTimeout(()=>{if(G.level!==L||G.touched||!$('home').hidden)return;showTip(tip);
-    let m=null;const ms=listMoves(G.b,false);
-    if(L===1)m=ms.find(x=>x.t===0);
-    else if(L===2)m=(G.ops[0]&&G.ops[0].t===1)?G.ops[0]:ms.find(x=>x.t===1);
-    if(m)showMove(m,true);
+  hideTip();clearTimeout(G.idleTimer);
+  const L=G.level;
+  setTimeout(()=>{
+    if(G.level!==L||anyOverlay())return;
+    if(L===1)guideNext();
+    else if(L===2){showTip('推一整排，常常能一下打开好几对');setTimeout(hideTip,4500);bumpIdle();}
+    else if(L===4){showTip('石化的牌推不动，把同样的牌推过去和它配对');setTimeout(hideTip,5000);}
   },700);
 }
 
 // ===== 过关、卡死、首页 =====
-function openOverlay(id){$(id).hidden=false;}
-function closeOverlay(id){$(id).hidden=true;}
+const OVERLAYS=['home','win','stuck','confirm'];
+function anyOverlay(){return OVERLAYS.some(id=>!$(id).hidden);}
+function openOverlay(id){$(id).hidden=false;timerPause();}
+function closeOverlay(id){$(id).hidden=true;timerStart();}
 function winLevel(){
-  clearHint();hideTip();
+  clearHint();hideTip();clearTimeout(G.idleTimer);
+  const ms=timeMs(),L=G.level;
   const stars=G.used===0?3:G.used<=2?2:1;
-  const L=G.level;SAVE.stars[L]=Math.max(SAVE.stars[L]||0,stars);SAVE.unlocked=Math.max(SAVE.unlocked,L+1);SAVE.best=Math.max(SAVE.best,G.score);writeSave();
+  const rec=SAVE.records[L];const isBest=!rec||ms<rec.ms;
+  if(isBest)SAVE.records[L]={ms,score:G.levelScore,combo:G.maxCombo,tools:G.used,at:Date.now()};
+  SAVE.stars[L]=Math.max(SAVE.stars[L]||0,stars);SAVE.unlocked=Math.max(SAVE.unlocked,L+1);writeSave();
   $('winTitle').textContent=['','过关','漂亮','完美'][stars];
-  $('winText').textContent=`第 ${L} 关 · 本关 ${G.levelScore} 分`+(G.used?` · 用了 ${G.used} 次道具`:' · 没用道具');
+  $('winRecord').textContent=isBest&&rec?'新纪录！':rec?`最佳 ${fmt(rec.ms)}`:'';
+  $('wTime').textContent=fmt(ms);$('wScore').textContent=G.levelScore;$('wCombo').textContent='×'+G.maxCombo;
+  $('winText').textContent=G.used?`用了 ${G.used} 次提示或洗牌`+(G.penalty?`，加时 ${G.penalty/1000} 秒`:''):'没用提示和洗牌';
   const ss=[...$('stars').children];ss.forEach(s=>s.classList.remove('on'));
   openOverlay('win');sfx.win();confetti();buzz([20,40,20]);
   ss.forEach((s,n)=>{if(n<stars)setTimeout(()=>{s.classList.add('on');s.animate([{transform:'scale(.2) rotate(-40deg)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'});sfx.tick();},250+n*230);});
 }
 function openStuck(){
-  $('sShuffle').disabled=!G.tools.shuffle;$('sUndo').disabled=!G.tools.undo||!G.hist.length;
-  $('sShuffle').textContent=`洗牌（${G.tools.shuffle}）`;$('sUndo').textContent=`撤销一步（${G.tools.undo}）`;
+  $('sShuffle').textContent=G.tools.shuffle>0?`洗牌（剩 ${G.tools.shuffle} 次）`:'洗牌（+20 秒）';
+  $('sUndo').disabled=!G.hist.length;
   openOverlay('stuck');sfx.nope();
 }
 $('sShuffle').onclick=()=>{closeOverlay('stuck');useShuffle();};
-$('sUndo').onclick=()=>{closeOverlay('stuck');useUndo(true);};
+$('sUndo').onclick=()=>{closeOverlay('stuck');useUndo();};
 $('sRestart').onclick=()=>{closeOverlay('stuck');G.score-=G.levelScore;startLevel(G.level);};
 $('btnNext').onclick=()=>{closeOverlay('win');startLevel(G.level+1);};
 $('btnReplay').onclick=()=>{closeOverlay('win');G.score-=G.levelScore;startLevel(G.level);};
@@ -860,12 +1086,13 @@ $('btnWinHome').onclick=()=>{closeOverlay('win');showHome();};
 $('btnHome').onclick=showHome;
 
 function showHome(){
-  clearHint();hideTip();
+  clearHint();hideTip();clearTimeout(G.idleTimer);
   const lv=$('levels');lv.innerHTML='';
   const n=Math.min(60,Math.max(20,Math.ceil((SAVE.unlocked+5)/5)*5));
   for(let i=1;i<=n;i++){
     const b=document.createElement('button');b.className='lv'+(i===SAVE.unlocked?' cur':'');b.disabled=i>SAVE.unlocked;
-    const st=SAVE.stars[i]||0;b.innerHTML=`${i}<small>${'★'.repeat(st)}</small>`;b.setAttribute('aria-label',`第 ${i} 关`);
+    const st=SAVE.stars[i]||0;b.innerHTML=`${i}<small>${'★'.repeat(st)}</small>`;
+    const rec=SAVE.records[i];b.setAttribute('aria-label',`第 ${i} 关`+(rec?`，最佳 ${fmt(rec.ms)}`:''));
     b.onclick=()=>{ac();closeOverlay('home');G.score=0;startLevel(i);};lv.appendChild(b);
   }
   $('btnPlay').textContent=`开始 第 ${SAVE.unlocked} 关`;
@@ -873,8 +1100,8 @@ function showHome(){
 }
 $('btnPlay').onclick=()=>{ac();closeOverlay('home');G.score=0;startLevel(SAVE.unlocked);};
 $('btnReset').onclick=()=>openOverlay('confirm');
-$('cNo').onclick=()=>closeOverlay('confirm');
-$('cYes').onclick=()=>{SAVE={unlocked:1,stars:{},muted:SAVE.muted,best:0};writeSave();closeOverlay('confirm');showHome();};
+$('cNo').onclick=()=>{$('confirm').hidden=true;};
+$('cYes').onclick=()=>{SAVE={unlocked:1,stars:{},records:{},muted:SAVE.muted};writeSave();$('confirm').hidden=true;showHome();};
 
 const SOUND_ON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.3 6.4a8 8 0 0 1 0 11.2"/></svg>';
 const SOUND_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="m16 9.5 5 5"/><path d="m21 9.5-5 5"/></svg>';
@@ -887,11 +1114,12 @@ function boot(data){
   FX.cv=$('fx');FX.ctx=FX.cv.getContext('2d');fxResize();
   loadSave();syncSound();
   $('logoTiles').innerHTML=[31,32,33].map(f=>`<div class="tile">${faceSVG(f)}</div>`).join('');
-  if(data&&data.level&&data.c){G.score=data.score||0;startLevel(data.level,data);}
+  if(data&&data.level&&data.c&&data.fz){$('home').hidden=true;G.score=data.score||0;startLevel(data.level,data);}
   else{G.score=0;startLevel(SAVE.unlocked);showHome();}
 }
 addEventListener('resize',()=>{fxResize();layout(true);});
-window.claude?.hot?.snapshot?.(()=>G.b?{level:G.level,c:Array.from(G.b.c),ids:Array.from(G.ids),tools:G.tools,used:G.used,score:G.score,levelScore:G.levelScore}:{});
+window.claude?.hot?.snapshot?.(()=>G.b&&G.active?{level:G.level,c:Array.from(G.b.c),fz:Array.from(G.b.fz),ids:Array.from(G.ids),tools:G.tools,used:G.used,
+  score:G.score,levelScore:G.levelScore,elapsed:timeMs()-G.penalty,penalty:G.penalty,maxCombo:G.maxCombo}:{});
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
 </script>
 
