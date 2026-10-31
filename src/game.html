@@ -118,6 +118,9 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 80'%3E%3Cpath d='M4 22l11 6 3 10-6 9M18 38l12-3 9 7M56 14l-9 9 2 9M47 23l-10-1M54 60l-11 3-5 11M43 63l-8-6' fill='none' stroke='%234d4a44' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' opacity='.7'/%3E%3C/svg%3E") center/100% 100% no-repeat;
 }
+/* 按下一张牌时，盘面上同样的牌亮起描边，方便找配对 */
+.tile.same{outline:3px solid var(--gold-hi);outline-offset:1px;animation:same .9s ease-in-out infinite alternate}
+@keyframes same{from{outline-color:var(--gold-hi)}to{outline-color:var(--gold)}}
 .tile.glint{animation:glint .7s ease-out}
 @keyframes glint{0%{filter:brightness(1)}35%{filter:brightness(1.35) drop-shadow(0 0 8px var(--gold-hi))}100%{filter:brightness(1)}}
 .board-instant .tile{transition:none!important}
@@ -221,7 +224,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 
 @media (prefers-reduced-motion: reduce){
   .tile,.tile.slow{transition-duration:.01s}
-  .tile.cand::after,.tile.hint::after,.tile.glint,#board.flash{animation:none}
+  .tile.cand::after,.tile.hint::after,.tile.glint,.tile.same,#board.flash{animation:none}
 }
 </style>
 
@@ -593,7 +596,8 @@ function dots(n){
     for(let a=0;a<8;a++){const t=a*Math.PI/4;s+=`<circle cx="${(30+15.4*Math.cos(t)).toFixed(1)}" cy="${(40+15.4*Math.sin(t)).toFixed(1)}" r="1.9" fill="${COL.iv}"/>`;}return s;}
   return L[n].map(([x,y,r,c])=>dot(x,y,r,c)).join('');
 }
-const stick=(x,y,h,c)=>`<rect x="${x-3.6}" y="${y}" width="7.2" height="${h}" rx="3.6" fill="${c}"/><rect x="${x-3.6}" y="${y+h/2-1}" width="7.2" height="2" fill="${COL.iv}" opacity=".85"/><rect x="${x-1}" y="${y+2.5}" width="2" height="${h-5}" rx="1" fill="${COL.iv}" opacity=".35"/>`;
+// rot 为倾斜角度（绕竹节中心），w 为竹节宽度
+const stick=(x,y,h,c,rot=0,w=7.2)=>`<g${rot?` transform="rotate(${rot} ${x} ${y+h/2})"`:''}><rect x="${x-w/2}" y="${y}" width="${w}" height="${h}" rx="${w/2}" fill="${c}"/><rect x="${x-w/2}" y="${y+h/2-1}" width="${w}" height="2" fill="${COL.iv}" opacity=".85"/><rect x="${x-1}" y="${y+2.5}" width="2" height="${h-5}" rx="1" fill="${COL.iv}" opacity=".35"/></g>`;
 function bamboo(n){
   const G=COL.green,B=COL.blue,R=COL.red;
   const L={
@@ -603,10 +607,11 @@ function bamboo(n){
     5:[[16,8,26,G],[44,8,26,B],[30,27,26,R],[16,46,26,B],[44,46,26,G]],
     6:[[15,8,26,G],[30,8,26,G],[45,8,26,G],[15,46,26,B],[30,46,26,B],[45,46,26,B]],
     7:[[30,4,20,R],[15,29,20,G],[30,29,20,G],[45,29,20,G],[15,54,20,B],[30,54,20,B],[45,54,20,B]],
-    8:[[12,8,26,G],[24,8,26,B],[36,8,26,B],[48,8,26,G],[12,46,26,B],[24,46,26,G],[36,46,26,G],[48,46,26,B]],
+    // 八条用传统的上「∧」下「∨」斜排，和两排竖条的六条一眼区分开
+    8:[[10,7,27,G,0,6],[22,7,27,B,18,6],[38,7,27,B,-18,6],[50,7,27,G,0,6],[10,46,27,G,0,6],[22,46,27,B,-18,6],[38,46,27,B,18,6],[50,46,27,G,0,6]],
     9:[[15,5,22,G],[30,5,22,R],[45,5,22,B],[15,29,22,G],[30,29,22,R],[45,29,22,B],[15,53,22,G],[30,53,22,R],[45,53,22,B]]};
   if(n===1)return `<path d="M35 31c4-13 13-19 19-21-1 9-8 18-19 21z" fill="${R}"/><path d="M25 47c-4-11-12-16-18-17 1 8 8 15 18 17z" fill="${B}"/><rect x="25" y="9" width="10" height="62" rx="5" fill="${G}"/><rect x="25" y="29" width="10" height="2.4" fill="${COL.iv}" opacity=".85"/><rect x="25" y="50" width="10" height="2.4" fill="${COL.iv}" opacity=".85"/><rect x="28.6" y="12" width="2.6" height="56" rx="1.3" fill="${COL.iv}" opacity=".35"/>`;
-  return L[n].map(([x,y,h,c])=>stick(x,y,h,c)).join('');
+  return L[n].map(([x,y,h,c,r,w])=>stick(x,y,h,c,r,w)).join('');
 }
 const txt=(s,y,size,c)=>`<text x="30" y="${y}" text-anchor="middle" font-size="${size}" fill="${c}">${s}</text>`;
 const FACE_CACHE={};
@@ -785,6 +790,16 @@ function updateHud(){
 // ===== 选择、配对与消除 =====
 function clearSel(){G.els.forEach(el=>el.classList.remove('sel','cand'));G.sel=-1;G.cands=[];}
 function setSel(i,cands){clearSel();G.sel=i;G.cands=cands;elAt(i).classList.add('sel');cands.forEach(c=>elAt(c).classList.add('cand'));}
+// 同牌高亮：按下时亮起；没配上就再留一会儿，方便去推
+function showSame(i){
+  clearTimeout(G.sameTimer);const f=G.b.c[i];
+  G.els.forEach(el=>el.classList.remove('same'));
+  for(let j=0;j<G.ids.length;j++)if(j!==i&&G.ids[j]>=0&&G.b.c[j]===f)G.els[G.ids[j]].classList.add('same');
+}
+function clearSame(delay){
+  clearTimeout(G.sameTimer);const off=()=>G.els.forEach(el=>el.classList.remove('same'));
+  if(delay)G.sameTimer=setTimeout(off,delay);else off();
+}
 function clearHint(){G.els.forEach(el=>el.classList.remove('hint'));if(G.hand){G.hand.getAnimations().forEach(a=>a.cancel());G.hand.style.opacity=0;}G.demo=null;}
 function pushHist(){G.hist.push({c:G.b.c.slice(),fz:G.b.fz.slice(),ids:G.ids.slice(),score:G.score,levelScore:G.levelScore});if(G.hist.length>80)G.hist.shift();}
 function shake(el){if(!el)return;el.animate([{translate:'0 0'},{translate:'-5px 0'},{translate:'5px 0'},{translate:'-3px 0'},{translate:'0 0'}],{duration:260,easing:'ease-out'});}
@@ -799,12 +814,13 @@ function eliminate(i,j,before){
   const ea=elAt(i),eb=elAt(j);
   const ca=cellCenter(i),cb=cellCenter(j);
   const wasFrozen=G.b.fz[i]||G.b.fz[j];
+  clearSame();
   G.b.c[i]=EMPTY;G.b.c[j]=EMPTY;G.b.fz[i]=0;G.b.fz[j]=0;G.ids[i]=-1;G.ids[j]=-1;
   const now=performance.now();G.combo=(now-G.lastMatch<COMBO_MS)?G.combo+1:1;G.lastMatch=now;G.maxCombo=Math.max(G.maxCombo,G.combo);
   const gain=10*G.combo;G.score+=gain;G.levelScore+=gain;
   const mx=(ca.x+cb.x)/2,my=(ca.y+cb.y)/2;
   [[ea,ca],[eb,cb]].forEach(([el,c])=>{
-    el.dataset.dying='1';el.classList.remove('sel','cand','hint','lift','dragging');el.style.zIndex=300;
+    el.dataset.dying='1';el.classList.remove('sel','cand','hint','lift','dragging','same');el.style.zIndex=300;
     const tx=(mx-c.x)*.32,ty=(my-c.y)*.32;
     const an=el.animate([
       {scale:1,translate:'0 0',opacity:1,filter:'brightness(1)'},
@@ -863,10 +879,10 @@ function onTap(i){
   const ps=partners(G.b,i);
   if(ps.length===1){clearSel();const before=tapKeys();pushHist();eliminate(i,ps[0],before);}
   else if(ps.length>1){setSel(i,ps);sfx.select();}
-  else{clearSel();shake(elAt(i));sfx.nope();if(G.level===1)setTimeout(guideNext,500);}
+  else{clearSel();shake(elAt(i));sfx.nope();clearSame(2000);if(G.level===1)setTimeout(guideNext,500);}
 }
 function cancelPending(){
-  const s=G.hist.pop();G.pending=null;clearSel();
+  const s=G.hist.pop();G.pending=null;clearSel();clearSame();
   if(s){G.b.c=s.c;G.b.fz=s.fz;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;}
   render();sfx.nope();
 }
@@ -888,9 +904,10 @@ function markCands(ids){G.els.forEach(el=>el.classList.remove('cand'));ids.forEa
 board.addEventListener('pointerdown',e=>{
   if(G.busy||!G.b)return;ac();
   const el=e.target.closest('.tile');
-  if(!el||el.dataset.dying){if(G.pending)cancelPending();else clearSel();return;}
+  if(!el||el.dataset.dying){if(G.pending)cancelPending();else{clearSel();clearSame();}return;}
   const i=G.ids.indexOf(+el.dataset.id);if(i<0)return;
   PT={i,x0:e.clientX,y0:e.clientY,drag:false,dir:-1,k:0,moved:[],cands:[],candIds:[],pos:i,cache:{},frozen:!!G.b.fz[i]};
+  if(!G.pending)showSame(i);
   try{board.setPointerCapture(e.pointerId);}catch(_){}
 });
 board.addEventListener('pointermove',e=>{
@@ -898,7 +915,7 @@ board.addEventListener('pointermove',e=>{
   if(!PT.drag){
     if(Math.hypot(dx,dy)<8)return;
     if(G.pending){PT=null;cancelPending();return;}
-    if(PT.frozen){const el=elAt(PT.i);PT=null;shake(el);sfx.crack();toast('石化的牌推不动，把同样的牌推过来和它配对',2400);return;}
+    if(PT.frozen){const el=elAt(PT.i);PT=null;shake(el);sfx.crack();clearSame(2400);toast('石化的牌推不动，把同样的牌推过来和它配对',2400);return;}
     PT.drag=true;PT.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';clearSel();clearHint();elAt(PT.i).classList.add('lift');
   }
   const along=PT.axis==='x'?dx:dy,unit=PT.axis==='x'?G.cw:G.ch;
@@ -931,7 +948,7 @@ function endPointer(cancelled){
     if(p.cands.length===1){G.busy=true;setTimeout(()=>{G.busy=false;eliminate(p.pos,p.cands[0],before);},150);}
     else{G.pending={pos:p.pos,cands:p.cands,before};setSel(p.pos,p.cands);}
   }else{
-    resetVisual(p.moved);
+    resetVisual(p.moved);clearSame(1500);
     if(p.k>0||p.blocked){sfx.nope();setTimeout(()=>shake(elAt(p.i)),170);if(p.blocked)toast('前面有石化的牌挡着，推不动',1800);}
     if(G.level===1)setTimeout(guideNext,500);
   }
@@ -950,7 +967,7 @@ function useUndo(){
   if(G.busy)return;
   if(G.pending){cancelPending();return;}
   if(!G.hist.length){toast('已经回到开局了');return;}
-  const s=G.hist.pop();spendTool('undo');clearSel();clearHint();
+  const s=G.hist.pop();spendTool('undo');clearSel();clearHint();clearSame();
   const before=new Set();G.ids.forEach(id=>id>=0&&before.add(id));
   G.b.c=s.c;G.b.fz=s.fz;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;G.combo=0;
   render();
@@ -1007,7 +1024,7 @@ function useShuffle(){
   const byFace=new Map();for(let i=0;i<G.b.c.length;i++)if(G.b.c[i]>=0){const f=G.b.c[i];if(!byFace.has(f))byFace.set(f,[]);byFace.get(f).push(G.ids[i]);}
   const nids=new Int16Array(G.ids.length).fill(-1);
   for(let i=0;i<best.b.c.length;i++)if(best.b.c[i]>=0)nids[i]=byFace.get(best.b.c[i]).pop();
-  G.b=best.b;G.ids=nids;
+  clearSame();G.b=best.b;G.ids=nids;
   G.els.forEach(el=>el.classList.add('slow'));render();setTimeout(()=>G.els.forEach(el=>el.classList.remove('slow')),560);
   sfx.shuffle();updateHud();bumpIdle();
   if(best.thawed)toast('石化的牌也一起解开了');
