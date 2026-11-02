@@ -8,14 +8,15 @@ const E = loadEngine();
 const same = (a, b) => a.t === b.t && a.a === b.a && a.b === b.b && (a.t === 0 || (a.d === b.d && a.k === b.k));
 const legal = (b, m) => E.listMoves(b, false).some(x => same(x, m) || (m.t === 0 && x.t === 0 && x.a === m.b && x.b === m.a));
 let fail = 0, shuffles = 0, shuffleFail = 0, slowest = 0;
+for (const mode of ['challenge', 'casual'])
 for (let L = 1; L <= MAX; L++) {
-  const g = E.generate(L);
+  const g = E.generate(L, mode), tag = `${mode === 'casual' ? '爽玩' : '挑战'}第 ${L} 关`;
   let b = E.cp(g.b);
   for (const m of g.ops) {
-    if (!legal(b, m)) { console.log(`第 ${L} 关：标准解第 ${g.ops.indexOf(m) + 1} 步不合法`, m); fail++; break; }
+    if (!legal(b, m)) { console.log(`${tag}：标准解第 ${g.ops.indexOf(m) + 1} 步不合法`, m); fail++; break; }
     b = E.applyMove(b, m);
   }
-  if (E.tilesLeft(b)) { console.log(`第 ${L} 关：回放后剩 ${E.tilesLeft(b)} 张`); fail++; }
+  if (E.tilesLeft(b)) { console.log(`${tag}：回放后剩 ${E.tilesLeft(b)} 张`); fail++; }
   for (let trial = 0; trial < 3; trial++) {
     const rng = E.rngOf(L * 131 + trial);
     let s = E.cp(g.b);
@@ -26,7 +27,7 @@ for (let L = 1; L <= MAX; L++) {
     const plan = E.planShuffle(s, E.rngOf(L * 7 + trial));
     slowest = Math.max(slowest, performance.now() - t0);
     shuffles++;
-    if (!plan || !E.solve(plan.b, 20000, 6).ok) { shuffleFail++; console.log(`第 ${L} 关：洗牌后无解`); }
+    if (!plan || !E.solve(plan.b, 20000, 6).ok) { shuffleFail++; console.log(`${tag}：洗牌后无解`); }
   }
 }
 console.log(`标准解回放失败 ${fail} 关；洗牌 ${shuffles} 次，洗后无解 ${shuffleFail} 次，单次洗牌最慢 ${slowest.toFixed(0)} 毫秒`);

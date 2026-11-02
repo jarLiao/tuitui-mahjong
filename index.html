@@ -78,6 +78,14 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   background:var(--panel);box-shadow:inset 0 0 0 1px var(--rim);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;position:relative;
 }
 .clock svg{width:15px;height:15px;opacity:.8}
+.clock[hidden]+.score{margin-left:auto}
+.chip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--rim);color:var(--gold-hi);letter-spacing:.12em;white-space:nowrap}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.mode{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px;border-radius:16px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--rim)}
+.mode b{font-family:var(--font-title);font-weight:400;font-size:28px;line-height:1}
+.mode small{font-size:11px;color:var(--text-dim);letter-spacing:.04em}
+.mode.on{background:linear-gradient(180deg,var(--ivory),var(--ivory-shade));color:var(--ink);box-shadow:0 4px 0 var(--jade),0 5px 0 var(--jade-deep)}
+.mode.on small{color:var(--ink);opacity:.7}
 .score{text-align:right;font-variant-numeric:tabular-nums;line-height:1.1;min-width:54px}
 .score b{display:block;font-size:20px}
 .score small{font-size:11px;color:var(--text-dim);letter-spacing:.12em}
@@ -245,6 +253,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
     </button>
     <div class="lvl" id="lvl">第 1 关</div>
+    <span class="chip" id="modeChip"></span>
     <div class="clock" id="clock" aria-label="用时"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5"/></svg><span id="time">00:00</span></div>
     <div class="score"><b id="score">0</b><span class="cbar"><i id="cbar"></i></span></div>
     <button class="iconbtn" id="btnSound" aria-label="声音开关"></button>
@@ -270,13 +279,17 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
     <div class="logo-tiles" id="logoTiles"></div>
     <h1 class="title">推推麻将</h1>
     <p class="subtitle">点一点 · 推一推</p>
+    <div class="modes" role="radiogroup" aria-label="模式">
+      <button class="mode" data-mode="casual" role="radio"><b>爽玩</b><small>点哪推哪 · 连锁自动消</small></button>
+      <button class="mode" data-mode="challenge" role="radio"><b>挑战</b><small>计时 · 有难度 · 记成绩</small></button>
+    </div>
     <button class="btn" id="btnPlay">开始</button>
     <div class="levels" id="levels"></div>
     <div class="homebar">
       <button class="iconbtn" id="btnSound2"></button>
       <button class="iconbtn" id="btnReset">重置进度</button>
     </div>
-    <span class="ver">v2.0</span>
+    <span class="ver">v3.0</span>
   </div>
 </div>
 
@@ -415,7 +428,7 @@ function planShuffle(b,rng){
 // ===== 关卡：从空盘倒着放牌，每一步都是某个合法正向步的逆操作，所以必有解 =====
 // 难度目标：open 开局能直接点消的对数；push 模拟玩家一路上找不到现成对子、必须自己推的步数占比。
 // tail：开局最先要走的几步强制是推牌。离线按目标挑种子，节奏是「紧—松—中」循环
-function levelParams(L){
+function baseParams(L){
   const T={
     1:{cols:5,rows:5,pairs:6,fr:1,slide:0,frozen:0,script:['tap','push','chain','tap','tap','tap']},
     2:{cols:6,rows:6,density:.67,fr:.85,slide:.75,frozen:0,tail:1,group:.7,open:[1,2],push:[.45,.65],bursts:2},
@@ -428,6 +441,12 @@ function levelParams(L){
   const r=rngOf(L*977+5),k=L%3;
   return{cols:9,rows:L%4===0?9:10,density:Math.min(.9,.87+(L-8)*.002),fr:.52+r()*.12,slide:.6+r()*.1,frozen:3+Math.floor(r()*4),
     tail:k===0?3:k===1?1:2,group:k===1?.75:.6,open:k===0?[0,3]:k===1?[2,4]:[1,4],push:k===0?[.65,.85]:k===1?[.45,.6]:[.55,.72],bursts:k===1?5:4};
+}
+// 爽玩模式：牌少一点、石化少一半、同种牌少一点（少歧义），闸门更多、开局更松，专挑「推一下爆一串」的盘面
+function levelParams(L,mode){
+  const P=baseParams(L);if(mode!=='casual'||P.script)return P;
+  return{...P,density:Math.max(.6,P.density-.05),frozen:Math.floor((P.frozen||0)/2),fr:Math.min(1,P.fr+.15),
+    group:.9,tail:0,open:[2,5],bursts:(P.bursts||3)+2,push:null};
 }
 const EASY_FACES=[31,32,27,18,33,13,29,4];
 function faceList(L,pairs,fr,rng){
@@ -538,9 +557,9 @@ function tryGenerate(L,P,rng,drop){
   ops.reverse();
   return{b,ops,P,L,total:pairs*2};
 }
-function generateSeed(L,seed){
-  const P=levelParams(L);const rng=rngOf(((L*2654435761)^Math.imul(seed+1,0x9e3779b1))>>>0);
-  for(let t=0;t<240;t++){const g=tryGenerate(L,P,rng,Math.floor(t/80)*.04);if(g&&listMoves(g.b,true).length){g.seed=seed;return g;}}
+function generateSeed(L,seed,mode='challenge'){
+  const P=levelParams(L,mode);const rng=rngOf(((L*2654435761)^Math.imul(seed+1,0x9e3779b1))>>>0);
+  for(let t=0;t<240;t++){const g=tryGenerate(L,P,rng,Math.floor(t/80)*.04);if(g&&listMoves(g.b,true).length){g.seed=seed;g.mode=mode;return g;}}
   return null;
 }
 // 沿标准解统计每一步能直接点消的对数；某一步后对数猛增，说明这一步「打开了局面」
@@ -571,7 +590,7 @@ function scoreLevel(g,playN){
   if(P.script){const t=pr.taps;return(t[0]===1&&t[1]===0&&t[2]===0&&t[3]>=2)?100+t[3]:-100;}
   let s=Math.min(pr.bursts,P.bursts)*6;
   const[lo,hi]=P.open;s-=pr.open0<lo?(lo-pr.open0)*30:pr.open0>hi?(pr.open0-hi)*14:0;
-  if(playN){
+  if(playN&&P.push){
     const st=playStats(g,playN,g.seed);g.stats=st;
     const[a,c]=P.push;s-=st.push<a?(a-st.push)*150:st.push>c?(st.push-c)*150:0;
     if(st.trap>.5)s-=(st.trap-.5)*80;
@@ -579,10 +598,12 @@ function scoreLevel(g,playN){
   return s;
 }
 /*SEEDS-START*/const LEVEL_SEEDS=[null,0,4,5,4,21,6,8,19,13,28,10,15,5,5,9,18,17,6,12,9,4,8,12,8,12,6,11,8,4,3,9,0,18,15,5,3,17,4,16,2,15,4,3,8,6,13,11,4,15,15,0,15,15,9,17,0,4,10,6,14];/*SEEDS-END*/
-function generate(L){
-  if(LEVEL_SEEDS[L]!=null){const g=generateSeed(L,LEVEL_SEEDS[L]);if(g)return g;}
+/*CASUAL-SEEDS-START*/const CASUAL_SEEDS=[null,0,16,29,0,21,17,2,19,3,2,0,27,28,0,15,5,4,11,25,21,11,5,4,1,13,4,3,29,2,6,24,11,0,15,19,1,18,1,28,10,21,5,0,0,14,20,14,16,9,11,1,21,13,5,5,8,5,0,26,6];/*CASUAL-SEEDS-END*/
+function generate(L,mode='challenge'){
+  const table=mode==='casual'?CASUAL_SEEDS:LEVEL_SEEDS;
+  if(table[L]!=null){const g=generateSeed(L,table[L],mode);if(g)return g;}
   let best=null,bs=-1e9;
-  for(let s=0;s<8;s++){const g=generateSeed(L,500+s);if(!g)continue;const sc=scoreLevel(g,0);if(sc>bs){bs=sc;best=g;}}
+  for(let s=0;s<8;s++){const g=generateSeed(L,500+s,mode);if(!g)continue;const sc=scoreLevel(g,0);if(sc>bs){bs=sc;best=g;}}
   if(!best)throw new Error('关卡生成失败 '+L);
   return best;
 }
@@ -715,19 +736,28 @@ function fxLoop(now){
   if(FX.ps.length)requestAnimationFrame(fxLoop);else{FX.run=false;ctx.clearRect(0,0,FX.cv.width,FX.cv.height);}
 }
 
-// ===== 存档（只存在本机浏览器）。records 按关保存最佳用时，留给以后的排行榜 =====
+// ===== 存档（只存在本机浏览器）。两个模式分开记进度；挑战模式的 records 按关保存最佳用时，留给以后的排行榜 =====
 const SAVE_KEY='tuitui-mahjong-v2';
-let SAVE={unlocked:1,stars:{},records:{},muted:false};
-function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&typeof s==='object')SAVE=Object.assign(SAVE,s);}catch(e){}}
+const freshSave=muted=>({mode:'casual',muted:!!muted,casual:{unlocked:1,stars:{}},challenge:{unlocked:1,stars:{},records:{}}});
+let SAVE=freshSave(false);
+function loadSave(){try{
+  const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!s||typeof s!=='object')return;
+  // v2 只有一个模式，旧进度归到挑战模式
+  if(!s.challenge&&s.unlocked){s.challenge={unlocked:s.unlocked,stars:s.stars||{},records:s.records||{}};s.mode='challenge';}
+  delete s.unlocked;delete s.stars;delete s.records;
+  SAVE={...freshSave(s.muted),...s,casual:{...freshSave().casual,...s.casual},challenge:{...freshSave().challenge,...s.challenge}};
+}catch(e){}}
 function writeSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
+const casual=()=>G.mode==='casual';
+const prog=()=>SAVE[G.mode];
 
 // ===== 游戏状态 =====
 const TOOLS={undo:5,hint:3,shuffle:2};
 const PENALTY_MS=20000;
 const COMBO_MS=3000;
-const G={level:1,b:null,ids:null,ops:null,total:0,score:0,levelScore:0,combo:0,maxCombo:0,lastMatch:0,tools:{...TOOLS},used:0,
+const G={mode:'casual',level:1,b:null,ids:null,ops:null,total:0,score:0,levelScore:0,combo:0,maxCombo:0,lastMatch:0,tools:{...TOOLS},used:0,
   hist:[],busy:false,sel:-1,cands:[],pending:null,els:[],cw:40,ch:50,pad:10,touched:false,demo:null,
-  active:false,elapsed:0,runFrom:0,penalty:0,idleTimer:0};
+  active:false,elapsed:0,runFrom:0,penalty:0,idleTimer:0,queue:[],casT:0};
 const $=id=>document.getElementById(id);
 const board=$('board'),stage=$('stage');
 
@@ -745,8 +775,8 @@ setInterval(()=>{if(G.b)$('time').textContent=fmt(timeMs());},250);
 document.addEventListener('visibilitychange',()=>{document.hidden?timerPause():timerStart();});
 
 function startLevel(L,restore){
-  G.level=L;
-  const gen=generate(L);
+  G.level=L;clearTimeout(G.casT);G.casT=0;G.queue=[];
+  const gen=generate(L,G.mode);
   G.ops=gen.ops;G.total=gen.total;G.b=cp(gen.b);G.init=cp(gen.b);
   G.ids=new Int16Array(G.b.c.length).fill(-1);
   board.innerHTML='';G.els=[];G.slots=[];
@@ -764,7 +794,7 @@ function startLevel(L,restore){
     active:true,elapsed:0,runFrom:0,penalty:0});
   if(restore){G.b.c=Int8Array.from(restore.c);G.b.fz=Uint8Array.from(restore.fz);G.ids=Int16Array.from(restore.ids);
     Object.assign(G,{tools:restore.tools,used:restore.used,levelScore:restore.levelScore||0,elapsed:restore.elapsed||0,penalty:restore.penalty||0,maxCombo:restore.maxCombo||0});}
-  $('lvl').textContent=`第 ${L} 关`;
+  $('lvl').textContent=`第 ${L} 关`;$('modeChip').textContent=casual()?'爽玩':'挑战';$('clock').hidden=casual();
   layout(true);updateHud();timerStart();showTutorial();
 }
 
@@ -795,7 +825,7 @@ function updateHud(){
   $('score').textContent=G.score;
   const left=tilesLeft(G.b);$('prog').style.width=((1-left/G.total)*100).toFixed(1)+'%';
   for(const k of ['undo','hint','shuffle']){const n=G.tools[k],K=k[0].toUpperCase()+k.slice(1),bd=$('n'+K);
-    bd.textContent=n>0?n:'+20秒';bd.classList.toggle('cost',n<=0);}
+    bd.textContent=n>0?n:'+20秒';bd.classList.toggle('cost',n<=0);bd.hidden=casual();}
 }
 
 // ===== 选择、配对与消除 =====
@@ -857,8 +887,50 @@ function eliminate(i,j,before){
     const fresh=[];for(const k of tapKeys())if(!before.has(k))fresh.push(k);
     if(fresh.length>=2){setTimeout(()=>{fresh.forEach(k=>k.split('-').forEach(id=>{const el=G.els[+id];el.classList.remove('glint');el.offsetWidth;el.classList.add('glint');}));},260);}
     if(fresh.length>=3){setTimeout(()=>{showBanner(`打开局面 · ${fresh.length} 对`);sfx.open();},300);}
+    if(casual())queueCascade(fresh);
   }
   updateHud();afterMove();
+}
+// 爽玩：这一步新露出来的对子按节奏自动接连消掉，每消一对又可能露出新的，一直连锁到停下为止。
+// 连锁不单独记撤销，撤销会回到玩家这一步之前
+function queueCascade(fresh){
+  G.queue=G.queue.concat(fresh);
+  if(!G.queue.length||G.casT)return;
+  G.busy=true;G.casT=setTimeout(stepCascade,280);
+}
+function stepCascade(){
+  G.casT=0;
+  while(G.queue.length){
+    const [a,b]=G.queue.shift().split('-').map(Number);
+    const ia=G.ids.indexOf(a),ib=G.ids.indexOf(b);
+    if(ia<0||ib<0||!partners(G.b,ia).includes(ib))continue;
+    G.busy=false;eliminate(ia,ib,tapKeys());return;
+  }
+  if(G.active)G.busy=false;
+}
+function stopCascade(){clearTimeout(G.casT);G.casT=0;G.queue=[];}
+// 爽玩：点一张没法直接配对的牌，自动挑一种推法——推它自己过去，或者把同样的牌推过来（石化牌就靠这个）；
+// 有几种推法时挑推完露出对子最多的
+function bestPushFor(i){
+  let best=null,bs=-1e9;
+  for(const m of listMoves(G.b,false)){
+    if(m.t!==1||(m.a!==i&&m.b!==i))continue;
+    const sc=tapMoves(applyMove(G.b,m)).length-m.k*.01-(m.a===i?0:.5);
+    if(sc>bs){bs=sc;best=m;}
+  }
+  return best;
+}
+function bestPartner(i,ps){
+  let best=ps[0],bs=-1;
+  for(const p of ps){const nb=applyMove(G.b,{t:0,a:i,b:p});const n=tapMoves(nb).length;if(n>bs){bs=n;best=p;}}
+  return best;
+}
+function autoPush(m){
+  const before=tapKeys();pushHist();clearSame();clearSel();
+  const cells=pushCells(G.b,m.a,m.d),s=stepOf(G.b,m.d)*m.k;
+  moveCells(G.b.c,cells,s);moveCells(G.ids,cells,s);
+  render();sfx.slide();G.busy=true;
+  setTimeout(()=>{G.busy=false;eliminate(m.a+s,m.b,before);},190);
 }
 function floatText(s,x,y,cls){
   const r=stage.getBoundingClientRect();const f=document.createElement('div');f.className='float'+(cls?' '+cls:'');f.textContent=s;
@@ -879,7 +951,8 @@ function showBanner(s){
 function afterMove(){
   bumpIdle();
   if(tilesLeft(G.b)===0){G.busy=true;G.active=false;timerPause();setTimeout(winLevel,520);return;}
-  if(!listMoves(G.b,true).length){setTimeout(()=>{if(tilesLeft(G.b)&&!listMoves(G.b,true).length)openStuck();},560);return;}
+  if(!listMoves(G.b,true).length){setTimeout(()=>{if(!tilesLeft(G.b)||listMoves(G.b,true).length)return;
+    if(casual()){toast('没有能走的了，自动帮你洗一下');useShuffle();}else openStuck();},560);return;}
   if(G.level===1)setTimeout(guideNext,650);
 }
 
@@ -888,6 +961,10 @@ function onTap(i){
   if(G.pending){if(G.pending.cands.includes(i)){const p=G.pending;G.pending=null;clearSel();eliminate(p.pos,i,p.before);}else cancelPending();return;}
   if(G.sel>=0&&G.cands.includes(i)){const a=G.sel;clearSel();const before=tapKeys();pushHist();eliminate(a,i,before);return;}
   const ps=partners(G.b,i);
+  if(casual()){
+    if(ps.length){clearSel();const j=ps.length>1?bestPartner(i,ps):ps[0];const before=tapKeys();pushHist();eliminate(i,j,before);return;}
+    const m=bestPushFor(i);if(m){autoPush(m);return;}
+  }
   if(ps.length===1){clearSel();const before=tapKeys();pushHist();eliminate(i,ps[0],before);}
   else if(ps.length>1){setSel(i,ps);sfx.select();}
   else{clearSel();shake(elAt(i));sfx.nope();clearSame(2000);if(G.level===1)setTimeout(guideNext,500);}
@@ -974,7 +1051,7 @@ function endPointer(cancelled){
     moveCells(G.b.c,cells,s);moveCells(G.ids,cells,s);
     p.moved.forEach(c=>{const el=G.els[G.ids[c+s]];el&&el.classList.remove('dragging','lift');});
     render();sfx.slide();
-    if(t.cands.length===1){G.busy=true;setTimeout(()=>{G.busy=false;eliminate(t.pos,t.cands[0],before);},150);}
+    if(t.cands.length===1||casual()){G.busy=true;setTimeout(()=>{G.busy=false;eliminate(t.pos,t.cands[0],before);},150);}
     else{G.pending={pos:t.pos,cands:t.cands,before};setSel(t.pos,t.cands);}
   }else{
     resetVisual(p.moved);clearSame(1500);
@@ -988,6 +1065,7 @@ board.addEventListener('pointercancel',()=>endPointer(true));
 // ===== 道具：次数用完仍可用，每次加 20 秒，不打断节奏 =====
 function toast(s,ms=2200){const t=$('toast');t.textContent=s;t.classList.remove('hide');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.add('hide'),ms);}
 function spendTool(k){
+  if(casual()){updateHud();return;} // 爽玩模式道具不限次数
   if(G.tools[k]>0){G.tools[k]--;}
   else{G.penalty+=PENALTY_MS;const r=$('clock').getBoundingClientRect();floatText('+20秒',r.left+r.width/2,r.bottom+14,'penalty');}
   if(k!=='undo')G.used++;updateHud();
@@ -996,7 +1074,7 @@ function useUndo(){
   if(G.busy)return;
   if(G.pending){cancelPending();return;}
   if(!G.hist.length){toast('已经回到开局了');return;}
-  const s=G.hist.pop();spendTool('undo');clearSel();clearHint();clearSame();
+  stopCascade();const s=G.hist.pop();spendTool('undo');clearSel();clearHint();clearSame();
   const before=new Set();G.ids.forEach(id=>id>=0&&before.add(id));
   G.b.c=s.c;G.b.fz=s.fz;G.ids=s.ids;G.score=s.score;G.levelScore=s.levelScore;G.combo=0;
   render();
@@ -1018,15 +1096,16 @@ function useHint(){
   const {m,dead}=findHint();
   if(!m){openStuck();return;}
   if(dead){toast('这一盘已经解不开了，洗一下牌吧',2600);pulseTool('tShuffle');return;}
-  spendTool('hint');sfx.hint();showMove(m,true);
+  spendTool('hint');sfx.hint();showMove(m,true,casual());
 }
 function pulseTool(id){$(id).querySelector('.cap').animate([{scale:1},{scale:1.15},{scale:1}],{duration:420,iterations:3});}
 function moveKind(m){if(m.t===0)return'tap';return chainOf(G.b,m.a,m.d).chain.length?'chain':'push';}
-function showMove(m,loop){
+// tapOnly：爽玩模式下推牌也只演示「点一下」
+function showMove(m,loop,tapOnly){
   clearHint();
   if(m.t===0){elAt(m.a).classList.add('hint');elAt(m.b).classList.add('hint');pointAt(m.a,null,0,loop);}
   else{const r=simulate(m.a,m.d,m.k);elAt(m.a).classList.add('hint');r.candIds.forEach((id,n)=>{if(r.cands[n]===m.b)G.els[id].classList.add('hint');});
-    chainOf(G.b,m.a,m.d).chain.forEach(c=>elAt(c).classList.add('hint'));pointAt(m.a,m.d,m.k,loop);}
+    chainOf(G.b,m.a,m.d).chain.forEach(c=>elAt(c).classList.add('hint'));pointAt(m.a,tapOnly?null:m.d,m.k,loop);}
   G.demo=m;
 }
 function pointAt(i,d,k,loop){
@@ -1048,7 +1127,7 @@ function useShuffle(){
   let best=null,bd=1e9;
   for(let t=0;t<4&&bd>1;t++){const p=planShuffle(G.b,rngOf((Math.random()*1e9)|0));if(!p)continue;const dd=Math.abs(tapMoves(p.b).length-3);if(dd<bd){bd=dd;best=p;}}
   if(!best){toast('这一盘洗不动了，重来本关吧');return;}
-  pushHist();spendTool('shuffle');G.combo=0;
+  stopCascade();pushHist();spendTool('shuffle');G.combo=0;
   // 牌面按新盘面重新分配给现有的牌，牌会飞到新位置
   const byFace=new Map();for(let i=0;i<G.b.c.length;i++)if(G.b.c[i]>=0){const f=G.b.c[i];if(!byFace.has(f))byFace.set(f,[]);byFace.get(f).push(G.ids[i]);}
   const nids=new Int16Array(G.ids.length).fill(-1);
@@ -1064,17 +1143,19 @@ $('tHint').onclick=useHint;
 $('tShuffle').onclick=useShuffle;
 
 // ===== 新手引导：第 1 关手把手，第 2 关空闲太久再提示，第 4 关介绍石化牌 =====
-const GUIDE={tap:'两张相同的牌在一条线上、中间没挡着，点一下就消',push:'按住牌拖过去，和同样的牌对上就消',chain:'前面挨着的牌会被一起推走，整排都能推'};
+const GUIDE={
+  challenge:{tap:'两张相同的牌在一条线上、中间没挡着，点一下就消',push:'按住牌拖过去，和同样的牌对上就消',chain:'前面挨着的牌会被一起推走，整排都能推'},
+  casual:{tap:'两张相同的牌在一条线上、中间没挡着，点一下就消',push:'点这张牌，会自动推过去配对',chain:'点它，前面挨着的一整排会一起推过去'}};
 function showTip(s){const t=$('tip');t.textContent=s;t.classList.remove('fade');}
 function hideTip(){$('tip').classList.add('fade');}
+function showGuide(m){showTip(GUIDE[G.mode][moveKind(m)]);showMove(m,true,casual());}
 function guideNext(){
   if(G.level!==1||!G.active||G.busy||G.pending||anyOverlay())return;
-  const {m}=findHint();if(!m)return;
-  showTip(GUIDE[moveKind(m)]);showMove(m,true);
+  const {m}=findHint();if(m)showGuide(m);
 }
 function bumpIdle(){
   clearTimeout(G.idleTimer);
-  if(G.level===2&&G.active)G.idleTimer=setTimeout(()=>{if(G.active&&!anyOverlay()&&!G.demo){const {m}=findHint();if(m){showMove(m,true);showTip(GUIDE[moveKind(m)]);}}},12000);
+  if(G.level===2&&G.active)G.idleTimer=setTimeout(()=>{if(G.active&&!anyOverlay()&&!G.demo){const {m}=findHint();if(m)showGuide(m);}},12000);
 }
 function showTutorial(){
   hideTip();clearTimeout(G.idleTimer);
@@ -1082,8 +1163,8 @@ function showTutorial(){
   setTimeout(()=>{
     if(G.level!==L||anyOverlay())return;
     if(L===1)guideNext();
-    else if(L===2){showTip('推一整排，常常能一下打开好几对');setTimeout(hideTip,4500);bumpIdle();}
-    else if(L===4){showTip('石化的牌推不动，把同样的牌推过去和它配对');setTimeout(hideTip,5000);}
+    else if(L===2){showTip(casual()?'随便点，推开后露出来的对子会自动连着消':'推一整排，常常能一下打开好几对');setTimeout(hideTip,4500);bumpIdle();}
+    else if(L===4){showTip(casual()?'石化的牌推不动，点它会把同样的牌拉过来配对':'石化的牌推不动，把同样的牌推过去和它配对');setTimeout(hideTip,5000);}
   },700);
 }
 
@@ -1094,15 +1175,21 @@ function openOverlay(id){$(id).hidden=false;timerPause();}
 function closeOverlay(id){$(id).hidden=true;timerStart();}
 function winLevel(){
   clearHint();hideTip();clearTimeout(G.idleTimer);
-  const ms=timeMs(),L=G.level;
-  const stars=G.used===0?3:G.used<=2?2:1;
-  const rec=SAVE.records[L];const isBest=!rec||ms<rec.ms;
-  if(isBest)SAVE.records[L]={ms,score:G.levelScore,combo:G.maxCombo,tools:G.used,at:Date.now()};
-  SAVE.stars[L]=Math.max(SAVE.stars[L]||0,stars);SAVE.unlocked=Math.max(SAVE.unlocked,L+1);writeSave();
-  $('winTitle').textContent=['','过关','漂亮','完美'][stars];
-  $('winRecord').textContent=isBest&&rec?'新纪录！':rec?`最佳 ${fmt(rec.ms)}`:'';
+  const ms=timeMs(),L=G.level,P=prog();
+  // 爽玩按最高连消给星，挑战按道具用量给星并记最佳用时
+  const stars=casual()?(G.maxCombo>=8?3:G.maxCombo>=4?2:1):G.used===0?3:G.used<=2?2:1;
+  let recText='';
+  if(!casual()){
+    const rec=P.records[L];const isBest=!rec||ms<rec.ms;
+    if(isBest)P.records[L]={ms,score:G.levelScore,combo:G.maxCombo,tools:G.used,at:Date.now()};
+    recText=isBest&&rec?'新纪录！':rec?`最佳 ${fmt(rec.ms)}`:'';
+  }
+  P.stars[L]=Math.max(P.stars[L]||0,stars);P.unlocked=Math.max(P.unlocked,L+1);writeSave();
+  $('winTitle').textContent=casual()?['','清台','爽快','爽翻了'][stars]:['','过关','漂亮','完美'][stars];
+  $('winRecord').textContent=recText;
   $('wTime').textContent=fmt(ms);$('wScore').textContent=G.levelScore;$('wCombo').textContent='×'+G.maxCombo;
-  $('winText').textContent=G.used?`用了 ${G.used} 次提示或洗牌`+(G.penalty?`，加时 ${G.penalty/1000} 秒`:''):'没用提示和洗牌';
+  $('winText').textContent=casual()?(stars<3?`连消到 ×${stars<2?4:8} 能拿更多星`:'连消停不下来'):
+    G.used?`用了 ${G.used} 次提示或洗牌`+(G.penalty?`，加时 ${G.penalty/1000} 秒`:''):'没用提示和洗牌';
   const ss=[...$('stars').children];ss.forEach(s=>s.classList.remove('on'));
   openOverlay('win');sfx.win();confetti();buzz([20,40,20]);
   ss.forEach((s,n)=>{if(n<stars)setTimeout(()=>{s.classList.add('on');s.animate([{transform:'scale(.2) rotate(-40deg)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'});sfx.tick();},250+n*230);});
@@ -1122,21 +1209,23 @@ $('btnHome').onclick=showHome;
 
 function showHome(){
   clearHint();hideTip();clearTimeout(G.idleTimer);
-  const lv=$('levels');lv.innerHTML='';
-  const n=Math.min(60,Math.max(20,Math.ceil((SAVE.unlocked+5)/5)*5));
+  const lv=$('levels');lv.innerHTML='';const P=prog();
+  document.querySelectorAll('.mode').forEach(b=>{const on=b.dataset.mode===G.mode;b.classList.toggle('on',on);b.setAttribute('aria-checked',on);});
+  const n=Math.min(60,Math.max(20,Math.ceil((P.unlocked+5)/5)*5));
   for(let i=1;i<=n;i++){
-    const b=document.createElement('button');b.className='lv'+(i===SAVE.unlocked?' cur':'');b.disabled=i>SAVE.unlocked;
-    const st=SAVE.stars[i]||0;b.innerHTML=`${i}<small>${'★'.repeat(st)}</small>`;
-    const rec=SAVE.records[i];b.setAttribute('aria-label',`第 ${i} 关`+(rec?`，最佳 ${fmt(rec.ms)}`:''));
+    const b=document.createElement('button');b.className='lv'+(i===P.unlocked?' cur':'');b.disabled=i>P.unlocked;
+    const st=P.stars[i]||0;b.innerHTML=`${i}<small>${'★'.repeat(st)}</small>`;
+    const rec=P.records&&P.records[i];b.setAttribute('aria-label',`第 ${i} 关`+(rec?`，最佳 ${fmt(rec.ms)}`:''));
     b.onclick=()=>{ac();closeOverlay('home');G.score=0;startLevel(i);};lv.appendChild(b);
   }
-  $('btnPlay').textContent=`开始 第 ${SAVE.unlocked} 关`;
+  $('btnPlay').textContent=`开始 第 ${P.unlocked} 关`;
   openOverlay('home');
 }
-$('btnPlay').onclick=()=>{ac();closeOverlay('home');G.score=0;startLevel(SAVE.unlocked);};
+document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{ac();sfx.clack();G.mode=SAVE.mode=b.dataset.mode;writeSave();showHome();});
+$('btnPlay').onclick=()=>{ac();closeOverlay('home');G.score=0;startLevel(prog().unlocked);};
 $('btnReset').onclick=()=>openOverlay('confirm');
 $('cNo').onclick=()=>{$('confirm').hidden=true;};
-$('cYes').onclick=()=>{SAVE={unlocked:1,stars:{},records:{},muted:SAVE.muted};writeSave();$('confirm').hidden=true;showHome();};
+$('cYes').onclick=()=>{SAVE={...freshSave(SAVE.muted),mode:G.mode};writeSave();$('confirm').hidden=true;showHome();};
 
 const SOUND_ON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.3 6.4a8 8 0 0 1 0 11.2"/></svg>';
 const SOUND_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="m16 9.5 5 5"/><path d="m21 9.5-5 5"/></svg>';
@@ -1147,13 +1236,13 @@ $('btnSound').onclick=toggleSound;$('btnSound2').onclick=toggleSound;
 // ===== 启动 =====
 function boot(data){
   FX.cv=$('fx');FX.ctx=FX.cv.getContext('2d');fxResize();
-  loadSave();syncSound();
+  loadSave();syncSound();G.mode=SAVE.mode==='challenge'?'challenge':'casual';
   $('logoTiles').innerHTML=[31,32,33].map(f=>`<div class="tile">${faceSVG(f)}</div>`).join('');
-  if(data&&data.level&&data.c&&data.fz){$('home').hidden=true;G.score=data.score||0;startLevel(data.level,data);}
-  else{G.score=0;startLevel(SAVE.unlocked);showHome();}
+  if(data&&data.level&&data.c&&data.fz){$('home').hidden=true;G.mode=data.mode||G.mode;G.score=data.score||0;startLevel(data.level,data);}
+  else{G.score=0;startLevel(prog().unlocked);showHome();}
 }
 addEventListener('resize',()=>{fxResize();layout(true);});
-window.claude?.hot?.snapshot?.(()=>G.b&&G.active?{level:G.level,c:Array.from(G.b.c),fz:Array.from(G.b.fz),ids:Array.from(G.ids),tools:G.tools,used:G.used,
+window.claude?.hot?.snapshot?.(()=>G.b&&G.active?{mode:G.mode,level:G.level,c:Array.from(G.b.c),fz:Array.from(G.b.fz),ids:Array.from(G.ids),tools:G.tools,used:G.used,
   score:G.score,levelScore:G.levelScore,elapsed:timeMs()-G.penalty,penalty:G.penalty,maxCombo:G.maxCombo}:{});
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
 </script>
